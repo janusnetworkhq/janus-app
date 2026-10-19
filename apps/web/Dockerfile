@@ -2,7 +2,7 @@
 # Build from the monorepo root:
 #   docker build -f apps/web/Dockerfile -t janus-web .
 
-FROM node:22-alpine AS base
+FROM node:26-alpine AS base
 RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
 WORKDIR /repo
 
@@ -15,7 +15,7 @@ COPY apps/web ./apps/web
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm --filter @janus/web build
 
-FROM node:22-alpine AS runtime
+FROM node:26-alpine AS runtime
 RUN addgroup -S janus && adduser -S janus -G janus
 WORKDIR /app
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3001
