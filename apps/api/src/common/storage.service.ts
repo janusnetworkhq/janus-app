@@ -73,7 +73,9 @@ export class StorageService {
     const timestamp = Math.floor(Date.now() / 1000);
     const type = vault ? "authenticated" : "upload";
     const params: Record<string, string | number> = { public_id: publicId, timestamp, type };
-    if (resourceType === "video" && !vault) params.eager = "sp_full_hd/f_hls";
+    // No eager transformation: Cloudinary rejects `sp_*/f_hls` as eager ("Invalid format: hls").
+    // Adaptive HLS is derived on-the-fly from the delivery URL (sp_<profile>/<id>.m3u8), and the
+    // poster from so_1,f_jpg - neither needs eager generation at upload time.
     const signature = cloudinary.utils.api_sign_request(params, appConfig.cloudinaryApiSecret);
     return {
       uploadUrl: `https://api.cloudinary.com/v1_1/${appConfig.cloudinaryCloudName}/${resourceType}/upload`,
@@ -85,7 +87,6 @@ export class StorageService {
         signature,
         public_id: publicId,
         type,
-        ...(params.eager ? { eager: String(params.eager) } : {}),
       },
     };
   }
