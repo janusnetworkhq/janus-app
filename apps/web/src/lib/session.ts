@@ -29,9 +29,13 @@ export async function getLocalClaims(): Promise<LocalClaims | null> {
   }
 }
 
-export async function setSession(token: string, claims: LocalClaims | null): Promise<void> {
+export async function setSession(
+  token: string,
+  claims: LocalClaims | null,
+  maxAgeSec: number = SESSION_MAX_AGE,
+): Promise<void> {
   const jar = await cookies();
-  jar.set(TOKEN_COOKIE, token, { ...sessionCookieOptions(), maxAge: SESSION_MAX_AGE });
+  jar.set(TOKEN_COOKIE, token, { ...sessionCookieOptions(), maxAge: maxAgeSec });
   if (claims) {
     jar.set(CLAIMS_COOKIE, JSON.stringify(claims), {
       ...sessionCookieOptions(),

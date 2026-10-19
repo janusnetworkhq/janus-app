@@ -141,3 +141,15 @@ export type AuditEvent = {
   createdAt: string;
   metadata: unknown;
 };
+
+export type AppNotification = {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  data: unknown;
+  readAt: string | null;
+  createdAt: string;
+};
+
+export type NotificationPage = { items: AppNotification[]; nextCursor: string | null; unread: number };

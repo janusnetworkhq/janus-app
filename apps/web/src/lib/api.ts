@@ -1,10 +1,12 @@
 import { ApiError } from "./errors";
-import { apiBaseUrl, issueLocalToken } from "./local-token";
+import { apiBaseUrl, isLocalAuth, issueLocalToken } from "./local-token";
 import { getAccessToken, getLocalClaims, setSession } from "./session";
 
 type Method = "GET" | "POST" | "PATCH" | "DELETE";
 
 async function remint(): Promise<string | null> {
+  // OTP/Cognito sessions cannot be re-minted from claims; only dev tokens can.
+  if (!isLocalAuth()) return null;
   const claims = await getLocalClaims();
   if (!claims) return null;
   const token = await issueLocalToken(claims);

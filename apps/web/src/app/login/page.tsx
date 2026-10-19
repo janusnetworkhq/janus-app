@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { LoginForm } from "@/components/auth-forms";
-import { isLocalAuth } from "@/lib/local-token";
+import { LoginForm, OtpLoginForm } from "@/components/auth-forms";
+import { authMode } from "@/lib/local-token";
 import { cognitoConfig } from "@/lib/cognito";
 
 export const metadata: Metadata = { title: "Sign in" };
@@ -11,7 +11,7 @@ export default async function LoginPage({
   searchParams: Promise<{ next?: string }>;
 }) {
   const { next } = await searchParams;
-  const local = isLocalAuth();
+  const mode = authMode();
   const cognito = cognitoConfig();
   return (
     <div className="flex min-h-dvh items-center justify-center px-4">
@@ -22,8 +22,10 @@ export default async function LoginPage({
           Sign NDAs and review vault files on desktop. Students should use the mobile app.
         </p>
         <div className="mt-6">
-          {local ? (
+          {mode === "local" ? (
             <LoginForm next={next} />
+          ) : mode === "otp" ? (
+            <OtpLoginForm next={next} />
           ) : cognito.enabled ? (
             <a
               href={`/auth/cognito/start${next ? `?next=${encodeURIComponent(next)}` : ""}`}
@@ -33,8 +35,8 @@ export default async function LoginPage({
             </a>
           ) : (
             <p className="text-sm text-muted-foreground">
-              Set <code>JANUS_COGNITO_DOMAIN</code> and <code>JANUS_COGNITO_CLIENT_ID</code> to enable Cognito sign-in,
-              or <code>JANUS_AUTH_MODE=local</code> for development.
+              Sign-in is not configured yet. Set the Cognito settings to enable hosted sign-in,
+              or <code>JANUS_AUTH_MODE=otp</code> for email-code sign-in.
             </p>
           )}
         </div>

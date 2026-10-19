@@ -4,6 +4,9 @@ export const CLAIMS_COOKIE = "janus_claims";
 /** Matches Nest local JWT `expiresIn: 900`. */
 export const SESSION_MAX_AGE = 60 * 15;
 
+/** Matches API OTP session JWT (`SESSION_TOKEN_TTL`, default 24h). */
+export const OTP_SESSION_MAX_AGE = 60 * 60 * 24;
+
 export type LocalClaims = {
   sub: string;
   email?: string;

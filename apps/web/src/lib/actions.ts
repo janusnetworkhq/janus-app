@@ -6,6 +6,7 @@ import { nestDel, nestGet, nestPatch, nestPost } from "./api";
 import { ApiError } from "./errors";
 import { issueLocalToken } from "./local-token";
 import { clearSession, setSession, type LocalClaims } from "./session";
+import { OTP_SESSION_MAX_AGE } from "./session-cookies";
 import type { FeedPage, Me, NdaRequest } from "./types";
 
 function safeNextPath(raw: string | null): string {
@@ -32,9 +33,100 @@ export async function signInLocal(
   };
 
   const accessToken = await issueLocalToken(claims);
-  if (!accessToken) return { error: "Could not issue a local session. Is the API running on :3000?" };
+  if (!accessToken) return { error: "Could not sign you in. Please check your connection and try again." };
   await setSession(accessToken, claims);
   redirect(next);
+}
+
+export type OtpState = {
+  stage?: "email" | "code";
+  email?: string;
+  name?: string;
+  error?: string;
+  notice?: string;
+  /** epoch ms when the resend button unlocks (API enforces a 30s cooldown) */
+  resendAt?: number;
+};
+
+type OtpVerifyResponse = {
+  accessToken: string;
+  isNewUser: boolean;
+  profileComplete: boolean;
+  user: { id: string; email: string | null; displayName: string | null };
+};
+
+function friendlyOtpError(error: unknown, fallback: string): string {
+  if (error instanceof ApiError) {
+    if (error.code === "RATE_LIMITED" || error.status === 429) return error.message;
+    if (error.code === "INVALID_OTP") return "That code is not correct. Check the 6 digits and try again.";
+    if (error.code === "OTP_EXPIRED") return "That code has expired. Request a new code and try again.";
+    if (error.code === "VALIDATION_ERROR") return "Enter a valid email address and a 6-digit code.";
+    return error.userMessage;
+  }
+  return fallback;
+}
+
+/**
+ * Email-OTP login (production). One action, three intents:
+ * send (lookup + otp/send) -> code screen, resend (cooldown-guarded), verify
+ * (exchanges the code for the API session token, stored only in an httpOnly cookie).
+ */
+export async function otpLogin(_prev: OtpState | undefined, formData: FormData): Promise<OtpState> {
+  const intent = String(formData.get("intent") ?? "send");
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const name = String(formData.get("name") ?? "").trim();
+  const next = safeNextPath(String(formData.get("next") ?? "/feed"));
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    return { stage: "email", email, name, error: "Enter a valid email address." };
+  }
+
+  if (intent === "verify") {
+    const code = String(formData.get("code") ?? "").trim();
+    if (!/^\d{6}$/.test(code)) {
+      return { stage: "code", email, name, resendAt: Number(formData.get("resendAt") ?? 0) || undefined, error: "Enter the 6-digit code from your email." };
+    }
+    let verified: OtpVerifyResponse;
+    try {
+      verified = await nestPost<OtpVerifyResponse>("/v1/auth/otp/verify", { email, code, name: name || undefined });
+    } catch (error) {
+      return { stage: "code", email, name, resendAt: Number(formData.get("resendAt") ?? 0) || undefined, error: friendlyOtpError(error, "Could not verify that code. Please try again.") };
+    }
+    await setSession(verified.accessToken, null, OTP_SESSION_MAX_AGE);
+    redirect(verified.profileComplete ? next : "/onboarding");
+  }
+
+  // send / resend
+  try {
+    if (intent === "send") {
+      await nestPost("/v1/auth/lookup", { email }).catch(() => null);
+    }
+    await nestPost("/v1/auth/otp/send", { email, name: name || undefined });
+  } catch (error) {
+    return {
+      stage: intent === "resend" ? "code" : "email",
+      email,
+      name,
+      resendAt: intent === "resend" ? Date.now() + 30_000 : undefined,
+      error: friendlyOtpError(error, "Could not send a code right now. Please try again in a moment."),
+    };
+  }
+  return {
+    stage: "code",
+    email,
+    name,
+    resendAt: Date.now() + 30_000,
+    notice: intent === "resend" ? "A new code is on its way to your email." : "We sent a 6-digit code to your email. It expires in 10 minutes.",
+  };
+}
+
+export async function markNotificationsRead(): Promise<void> {
+  try {
+    await nestPost("/v1/notifications/read-all");
+  } catch {
+    /* best-effort: page reload will show current state */
+  }
+  revalidatePath("/notifications");
+  revalidatePath("/feed");
 }
 
 export async function signOut(): Promise<void> {
