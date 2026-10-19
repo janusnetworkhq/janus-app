@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
-import { PDFDocument, StandardFonts } from "pdf-lib";
+import { createHash } from "node:crypto";
+import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { UserRole } from "@prisma/client";
 import { ApiError } from "../common/api-error";
 import { appConfig } from "../common/config";
@@ -123,7 +124,7 @@ export class NdaService {
       take: 50,
       include: {
         student: { select: { id: true, handle: true, displayName: true } },
-        agreement: { select: { id: true, signedAt: true } },
+        agreement: { select: { id: true, signedAt: true, signatureSha256: true } },
       },
     });
   }
@@ -157,7 +158,7 @@ export class NdaService {
   async sign(
     recruiter: AuthedUser,
     id: string,
-    input: { typedName: string; acceptedHash: string },
+    input: { typedName: string; acceptedHash: string; signaturePngBase64?: string },
     req: { ip?: string; userAgent?: string },
     idempotencyKey?: string,
   ) {
@@ -184,7 +185,22 @@ export class NdaService {
           throw ApiError.badRequest("NAME_REQUIRED", "Type your legal name");
         }
 
-        const pdfBytes = await this.renderPdf(row.template.body, input.typedName, row.template.contentSha256);
+        // Drawn signature (web pad): validate PNG bytes, hash, store authenticated/private.
+        let signatureKey: string | null = null;
+        let signatureSha256: string | null = null;
+        let signaturePng: Buffer | null = null;
+        if (input.signaturePngBase64) {
+          const raw = input.signaturePngBase64.replace(/^data:image\/png;base64,/, "");
+          signaturePng = Buffer.from(raw, "base64");
+          const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+          if (signaturePng.length < 32 || signaturePng.length > 750_000 || !signaturePng.subarray(0, 8).equals(PNG_MAGIC)) {
+            throw ApiError.badRequest("SIGNATURE_INVALID", "Signature must be a drawn PNG image under 750 KB.");
+          }
+          signatureSha256 = createHash("sha256").update(signaturePng).digest("hex");
+          signatureKey = `legal/signatures/${row.id}.png`;
+          await this.storage.put(appConfig.s3VaultBucket, signatureKey, signaturePng, "image/png");
+        }
+        const pdfBytes = await this.renderPdf(row.template.body, input.typedName, row.template.contentSha256, signaturePng, signatureSha256);
         const artifactKey = `legal/${row.id}.pdf`;
         await this.storage.put(appConfig.s3VaultBucket, artifactKey, Buffer.from(pdfBytes), "application/pdf");
 
@@ -197,6 +213,8 @@ export class NdaService {
               signerName: input.typedName.trim(),
               templateSha256: row.template.contentSha256,
               artifactS3Key: artifactKey,
+              signatureS3Key: signatureKey,
+              signatureSha256,
               ipAddress: req.ip || "0.0.0.0",
               userAgent: (req.userAgent || "unknown").slice(0, 512),
             },
@@ -248,12 +266,26 @@ export class NdaService {
     return { revoked: true };
   }
 
-  private async renderPdf(body: string, signerName: string, hash: string): Promise<Uint8Array> {
+  private async renderPdf(body: string, signerName: string, hash: string, signaturePng?: Buffer | null, signatureSha256?: string | null): Promise<Uint8Array> {
     const pdf = await PDFDocument.create();
     const page = pdf.addPage([595, 842]);
     const font = await pdf.embedFont(StandardFonts.Helvetica);
     const text = `${body}\n\nSigned by: ${signerName}\nSHA-256: ${hash}\n`;
     page.drawText(text.slice(0, 1800), { x: 40, y: 780, size: 9, font, maxWidth: 515, lineHeight: 11 });
+    if (signaturePng) {
+      const sig = pdf.addPage([595, 842]);
+      sig.drawText("Signature", { x: 40, y: 790, size: 16, font });
+      sig.drawText(`Printed legal name: ${signerName}`, { x: 40, y: 760, size: 11, font });
+      try {
+        const img = await pdf.embedPng(signaturePng);
+        const scale = Math.min(360 / img.width, 130 / img.height);
+        sig.drawRectangle({ x: 40, y: 580, width: 400, height: 160, borderColor: rgb(0.55, 0.55, 0.55), borderWidth: 1 });
+        sig.drawImage(img, { x: 50, y: 595, width: img.width * scale, height: img.height * scale });
+      } catch { /* bytes were PNG-validated; the hash below is the evidence anchor */ }
+      const mono = await pdf.embedFont(StandardFonts.Courier);
+      if (signatureSha256) sig.drawText(`Signature PNG SHA-256: ${signatureSha256}`, { x: 40, y: 545, size: 8, font: mono });
+      sig.drawText(`Agreement SHA-256: ${hash}`, { x: 40, y: 528, size: 8, font: mono });
+    }
     return pdf.save();
   }
 }

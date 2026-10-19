@@ -1,3 +1,4 @@
-export default function PortalLoading() {
-  return <div className="h-40 animate-pulse rounded-lg bg-muted" />;
+import { SkeletonCards } from "@/components/ui/feedback";
+export default function Loading() {
+  return <div aria-label="Loading"><SkeletonCards count={3} /></div>;
 }

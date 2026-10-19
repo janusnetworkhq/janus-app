@@ -65,6 +65,7 @@ export type NdaRequest = {
   recruiterId: string;
   videoId: string | null;
   student?: { id: string; handle: string; displayName: string | null };
+  agreement?: { id: string; signedAt: string | Date; signatureSha256?: string | null } | null;
 };
 
 export type VaultAsset = {

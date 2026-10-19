@@ -538,6 +538,8 @@ model NdaAgreement {
   signerName         String          @map("signer_name") @db.VarChar(120)
   templateSha256     String          @map("template_sha256") @db.Char(64)
   artifactS3Key      String          @map("artifact_s3_key") @db.VarChar(1024)
+  signatureS3Key     String?         @map("signature_s3_key") @db.VarChar(1024)
+  signatureSha256    String?         @map("signature_sha256") @db.Char(64)
   ipAddress          String          @map("ip_address") @db.VarChar(45)
   userAgent          String          @map("user_agent") @db.VarChar(512)
   providerEnvelopeId String?         @map("provider_envelope_id") @db.VarChar(128)

@@ -21,11 +21,12 @@ export function Badge({
   );
 }
 
-export function EmptyState({ title, body }: { title: string; body: string }) {
+export function EmptyState({ title, body, children }: { title: string; body: string; children?: ReactNode }) {
   return (
-    <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-16 text-center">
+    <div className="page-enter rounded-2xl border border-dashed border-border bg-card/40 px-8 py-16 text-center">
       <h2 className="text-lg font-semibold">{title}</h2>
-      <p className="mt-2 text-sm text-muted-foreground">{body}</p>
+      <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">{body}</p>
+      {children ? <div className="mt-5 flex justify-center">{children}</div> : null}
     </div>
   );
 }
@@ -39,7 +40,25 @@ export function Alert({ children }: { children: ReactNode }) {
 }
 
 export function Card({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("rounded-lg border border-border bg-card p-5", className)}>{children}</div>;
+  return <div className={cn("texture-card rounded-2xl p-5", className)}>{children}</div>;
+}
+
+export function Skeleton({ className }: { className?: string }) {
+  return <div className={cn("skeleton", className)} aria-hidden />;
+}
+
+export function SkeletonCards({ count = 3 }: { count?: number }) {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-label="Loading">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="texture-card rounded-2xl p-5">
+          <Skeleton className="h-4 w-2/3" />
+          <Skeleton className="mt-3 h-3 w-1/2" />
+          <Skeleton className="mt-5 h-9 w-full" />
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export function PageHeader({

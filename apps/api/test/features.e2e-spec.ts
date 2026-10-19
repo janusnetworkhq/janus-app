@@ -154,8 +154,13 @@ describe("Round 3 features", () => {
     await flush();
     expect((await notificationsFor(recruiterToken)).items.some((n) => n.type === "NDA_ACCEPTED")).toBe(true);
 
-    const signed = await inject({ method: "POST", url: `/v1/nda/requests/${ndaId}/sign`, token: recruiterToken, payload: { typedName: "Feature Recruiter", acceptedHash: templateHash } });
+    const PNG_1PX = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8Xw8AAwMCAO+ip1sAAAAASUVORK5CYII=";
+    const signed = await inject({ method: "POST", url: `/v1/nda/requests/${ndaId}/sign`, token: recruiterToken, payload: { typedName: "Feature Recruiter", acceptedHash: templateHash, signaturePngBase64: PNG_1PX } });
     expect(signed.statusCode).toBe(201);
+    const agreement = await prisma.ndaAgreement.findFirstOrThrow({ where: { requestId: ndaId } });
+    const { createHash } = await import("node:crypto");
+    expect(agreement.signatureS3Key).toBe(`legal/signatures/${ndaId}.png`);
+    expect(agreement.signatureSha256).toBe(createHash("sha256").update(Buffer.from(PNG_1PX, "base64")).digest("hex"));
     await flush();
     expect((await notificationsFor(studentToken)).items.some((n) => n.type === "NDA_SIGNED")).toBe(true);
   });
@@ -209,6 +214,16 @@ describe("Round 3 features", () => {
     const res = await inject({ method: "POST", url: `/v1/nda/requests/${row.id}/sign`, token: recruiterToken, payload: { typedName: "Feature Recruiter", acceptedHash: templateHash } });
     expect(res.statusCode).toBe(409);
     expect(res.json().error.code).toBe("NDA_EXPIRED");
+  });
+
+  it("rejects a non-PNG signature image", async () => {
+    const tpl = await prisma.ndaTemplate.findFirstOrThrow({ where: { isActive: true } });
+    const row = await prisma.ndaRequest.create({
+      data: { recruiterId, studentId, templateId: tpl.id, status: "ACCEPTED", expiresAt: new Date(Date.now() + 86400_000) },
+    });
+    const res = await inject({ method: "POST", url: `/v1/nda/requests/${row.id}/sign`, token: recruiterToken, payload: { typedName: "Feature Recruiter", acceptedHash: templateHash, signaturePngBase64: "bm90LWEtcG5n" } });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe("SIGNATURE_INVALID");
   });
 
   it("admin un-hide does not restore a video the author deleted", async () => {

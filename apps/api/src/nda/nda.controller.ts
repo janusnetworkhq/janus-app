@@ -37,6 +37,12 @@ class SignDto {
   @IsString()
   @MaxLength(64)
   acceptedHash!: string;
+
+  /** Base64 PNG from the web signing pad. Optional: mobile keeps typed signing. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(1_400_000)
+  signaturePngBase64?: string;
 }
 
 @ApiTags("nda")

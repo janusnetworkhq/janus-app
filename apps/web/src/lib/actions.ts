@@ -222,11 +222,18 @@ export async function signNda(
   studentId: string,
   typedName: string,
   acceptedHash: string,
+  signatureDataUrl?: string | null,
 ): Promise<{ error?: string }> {
   try {
     await nestPost(
       `/v1/nda/requests/${requestId}/sign`,
-      { typedName, acceptedHash },
+      {
+        typedName,
+        acceptedHash,
+        ...(signatureDataUrl
+          ? { signaturePngBase64: signatureDataUrl.replace(/^data:image\/png;base64,/, "") }
+          : {}),
+      },
       crypto.randomUUID(),
     );
   } catch (error) {

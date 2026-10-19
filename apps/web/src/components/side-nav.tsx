@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ClipboardList, LayoutGrid, Shield, ShieldCheck, Users, Video } from "lucide-react";
+import { BookOpenText, ClipboardList, LayoutGrid, Settings, Shield, ShieldCheck, Users, Video } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Item = { href: string; label: string; icon: typeof LayoutGrid; exact?: boolean };
@@ -10,6 +10,8 @@ type Item = { href: string; label: string; icon: typeof LayoutGrid; exact?: bool
 const recruiterNav: Item[] = [
   { href: "/feed", label: "Feed", icon: LayoutGrid, exact: true },
   { href: "/requests", label: "NDA requests", icon: ClipboardList, exact: true },
+  { href: "/docs", label: "Docs", icon: BookOpenText },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 const adminNav: Item[] = [
