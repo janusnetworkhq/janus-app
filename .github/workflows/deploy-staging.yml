@@ -20,7 +20,7 @@ jobs:
       IMAGE_TAG: ${{ github.event.inputs.image_tag }}
       CDK_STAGING_ACCOUNT: ${{ secrets.CDK_STAGING_ACCOUNT }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
         with:
           version: 9.15.0
