@@ -14,6 +14,14 @@ async function bootstrap() {
   ctx.enableShutdownHooks();
   const queue = ctx.get(QueueService);
   if (!queue.client) {
+    if (appConfig.queueMode === "inline") {
+      // No-AWS prod path: WorkerHost (WORKERS_ENABLED=true) already started the DB outbox
+      // poller in this process; it flushes outbox rows and runs handlers inline (incl.
+      // ffmpeg transcode). Keep the process alive without an SQS consumer.
+      Logger.log("Inline queue mode: outbox poller running in worker process (no SQS)", "Worker");
+      await new Promise<never>(() => undefined);
+      return;
+    }
     Logger.warn("SQS is not configured (MEDIA_DRIVER=s3 and SQS_* URLs required); nothing to consume", "Worker");
     await ctx.close();
     return;

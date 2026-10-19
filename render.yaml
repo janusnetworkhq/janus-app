@@ -1,0 +1,62 @@
+# Janus production blueprint (Render) - Singapore region.
+# Secrets (sync: false) are set in the Render dashboard / via API, never committed.
+services:
+  - type: web
+    name: janus-api
+    runtime: docker
+    region: singapore
+    plan: starter
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    dockerCommand: node dist/main.js
+    healthCheckPath: /v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: WORKERS_ENABLED
+        value: "false"
+      - key: QUEUE_MODE
+        value: inline
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: AUTH_MODE
+        value: cognito
+      - key: AWS_REGION
+        value: ap-south-1
+      - key: MEDIA_DRIVER
+        sync: false
+      - key: TRANSCODE_DRIVER
+        value: ffmpeg
+      - key: CORS_ORIGINS
+        sync: false
+  - type: worker
+    name: janus-worker
+    runtime: docker
+    region: singapore
+    plan: standard
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    dockerCommand: node dist/workers/main.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: WORKERS_ENABLED
+        value: "true"
+      - key: QUEUE_MODE
+        value: inline
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: AUTH_MODE
+        value: cognito
+      - key: AWS_REGION
+        value: ap-south-1
+      - key: MEDIA_DRIVER
+        sync: false
+      - key: TRANSCODE_DRIVER
+        value: ffmpeg
+      - key: CORS_ORIGINS
+        sync: false

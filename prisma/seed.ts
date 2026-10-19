@@ -390,6 +390,32 @@ const SAMPLE_PROJECTS = [
 ];
 
 async function main() {
+  const prodSeed = process.env.SEED_MODE === "prod" || process.env.NODE_ENV === "production";
+  if (prodSeed) {
+    // Clean production seed: NDA template + optional admin bootstrap only. No demo users/videos.
+    const contentSha256 = createHash("sha256").update(NDA_BODY, "utf8").digest("hex");
+    await prisma.ndaTemplate.upsert({
+      where: { version: 1 },
+      update: { title: "JANUS Mutual Non-Disclosure Agreement v1", body: NDA_BODY, contentSha256, isActive: true },
+      create: { version: 1, title: "JANUS Mutual Non-Disclosure Agreement v1", body: NDA_BODY, contentSha256, isActive: true },
+    });
+    const adminEmail = process.env.ADMIN_BOOTSTRAP_EMAIL?.trim().toLowerCase();
+    if (adminEmail) {
+      await prisma.user.upsert({
+        where: { email: adminEmail },
+        update: { role: UserRole.PLATFORM_ADMIN, status: UserStatus.ACTIVE, profileComplete: true },
+        create: {
+          cognitoSub: process.env.ADMIN_BOOTSTRAP_SUB ?? `bootstrap:admin:${adminEmail}`,
+          email: adminEmail, handle: "janus_admin", displayName: "Janus Admin",
+          role: UserRole.PLATFORM_ADMIN, status: UserStatus.ACTIVE, profileComplete: true,
+        },
+      });
+      console.log(`Prod seed: NDA template + admin bootstrap (${adminEmail})`);
+    } else {
+      console.log("Prod seed: NDA template only (ADMIN_BOOTSTRAP_EMAIL unset)");
+    }
+    return;
+  }
   console.log("Seeding NDA template...");
   const contentSha256 = createHash("sha256").update(NDA_BODY, "utf8").digest("hex");
 

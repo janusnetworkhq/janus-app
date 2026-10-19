@@ -19,11 +19,13 @@ RUN pnpm exec prisma generate && pnpm --filter @janus/api build \
   && mkdir -p /out/dist && cp -R apps/api/dist/. /out/dist/
 
 FROM node:22-alpine AS runtime
-RUN apk add --no-cache wget \
+RUN apk add --no-cache wget ffmpeg \
   && addgroup -S janus && adduser -S janus -G janus
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=build --chown=janus:janus /out ./
+COPY --from=build --chown=janus:janus /repo/prisma ./prisma
+RUN npm install -g prisma@6.16.2 >/dev/null 2>&1 || true
 USER janus
 EXPOSE 3000
 HEALTHCHECK --interval=15s --timeout=3s --start-period=20s --retries=3 \

@@ -10,10 +10,11 @@
     "start:prod": "NODE_ENV=production node dist/main.js",
     "worker": "nest start --entryFile workers/main",
     "start:worker": "node dist/workers/main.js",
-    "start:migrate": "prisma migrate deploy --schema ../../prisma/schema.prisma && node dist/main.js",
+    "start:migrate": "prisma migrate deploy --schema ./prisma/schema.prisma && node dist/main.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "jest --runInBand --forceExit",
-    "openapi": "jest --runInBand --forceExit -t \"exports OpenAPI\""
+    "openapi": "jest --runInBand --forceExit -t \"exports OpenAPI\"",
+    "migrate:deploy": "prisma migrate deploy --schema ./prisma/schema.prisma"
   },
   "dependencies": {
     "@aws-sdk/client-rekognition": "^3.758.0",
