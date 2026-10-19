@@ -6,7 +6,7 @@ import { OutboxService } from "../common/outbox.service";
 import { PrismaService } from "../common/prisma.service";
 import { RateLimitService } from "../common/rate-limit.service";
 import { RedisService } from "../common/redis.service";
-import { StorageService } from "../common/storage.service";
+import { StorageService, cloudinaryResourceType } from "../common/storage.service";
 import { MediaPipelineService } from "./media-pipeline.service";
 import type { AuthedUser } from "../auth/auth.types";
 
@@ -67,6 +67,25 @@ export class MediaService {
       });
     }
 
+    if (this.storage.isCloudinary) {
+      const vault = input.kind === UploadKind.VAULT_FILE || input.kind === UploadKind.VAULT_VIDEO;
+      const resourceType = cloudinaryResourceType({ kind: input.kind, contentType: input.contentType });
+      const ticket = this.storage.createCloudinaryTicket(upload.s3Key, resourceType, vault);
+      return {
+        uploadId: upload.id,
+        uploadUrl: ticket.uploadUrl,
+        method: "POST_FORM" as const,
+        formFields: ticket.formFields,
+        resourceType: ticket.resourceType,
+        publicId: ticket.publicId,
+        expiresAt: upload.expiresAt,
+        headers: {},
+        kind: upload.kind,
+        vaultKind: input.vaultKind,
+        originalName: input.originalName,
+      };
+    }
+
     const uploadUrl = await this.storage.presignPut(
       upload.s3Bucket,
       upload.s3Key,
@@ -100,7 +119,15 @@ export class MediaService {
       throw ApiError.conflict("UPLOAD_STATE", "Upload already completed");
     }
 
-    const head = await this.storage.head(upload.s3Bucket, upload.s3Key).catch((err: { name?: string; $metadata?: { httpStatusCode?: number } }) => {
+    const head = this.storage.isCloudinary
+      ? await (async () => {
+          const vault = upload.kind === UploadKind.VAULT_FILE || upload.kind === UploadKind.VAULT_VIDEO;
+          const r = await this.storage.cloudinaryResource(upload.s3Key, cloudinaryResourceType({ kind: upload.kind, contentType: upload.contentType }), vault).catch(() => {
+            throw ApiError.badRequest("UPLOAD_MISSING", "Object not found in storage");
+          });
+          return { contentLength: r.bytes, contentType: upload.contentType, etag: r.etag };
+        })()
+      : await this.storage.head(upload.s3Bucket, upload.s3Key).catch((err: { name?: string; $metadata?: { httpStatusCode?: number } }) => {
       if (err?.name === "NotFound" || err?.$metadata?.httpStatusCode === 404) {
         throw ApiError.badRequest("UPLOAD_MISSING", "Object not found in storage");
       }
@@ -109,7 +136,7 @@ export class MediaService {
     if (appConfig.mediaDriver === "s3" && head.contentLength === 0) {
       throw ApiError.badRequest("UPLOAD_MISSING", "Object not found in storage");
     }
-    if (appConfig.mediaDriver === "s3" && head.contentLength > upload.byteSize * 1.05) {
+    if ((appConfig.mediaDriver === "s3" || appConfig.mediaDriver === "cloudinary") && head.contentLength > upload.byteSize * 1.05) {
       throw ApiError.badRequest("UPLOAD_SIZE", "Object larger than declared size");
     }
 
@@ -166,7 +193,7 @@ export class MediaService {
     });
 
     if (upload.kind === UploadKind.FEED_VIDEO || upload.kind === UploadKind.VAULT_VIDEO) {
-      const useInline = !appConfig.sqsTranscodeUrl || appConfig.mediaDriver === "noop";
+      const useInline = !appConfig.sqsTranscodeUrl || appConfig.mediaDriver === "noop" || appConfig.mediaDriver === "cloudinary";
       if (useInline) {
         await this.pipeline.processUpload(upload.id);
       } else {

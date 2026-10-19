@@ -62,6 +62,7 @@ export class VaultService {
       appConfig.s3VaultBucket,
       asset.s3Key,
       appConfig.limits.vaultUrlTtlSec,
+      asset.contentType.startsWith("video/") ? "video" : asset.contentType.startsWith("image/") ? "image" : "raw",
     );
     const expiresAt = new Date(Date.now() + appConfig.limits.vaultUrlTtlSec * 1000);
     const watermarkToken = createHash("sha256")

@@ -26,7 +26,7 @@ services:
       - key: AWS_REGION
         value: ap-south-1
       - key: MEDIA_DRIVER
-        value: s3
+        value: cloudinary
       - key: TRANSCODE_DRIVER
         value: ffmpeg
       - key: CORS_ORIGINS
@@ -36,6 +36,12 @@ services:
       - key: COGNITO_USER_POOL_ID
         sync: false
       - key: COGNITO_CLIENT_ID
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
         sync: false
       - key: AWS_ACCESS_KEY_ID
         sync: false
@@ -77,7 +83,7 @@ services:
       - key: AWS_REGION
         value: ap-south-1
       - key: MEDIA_DRIVER
-        value: s3
+        value: cloudinary
       - key: TRANSCODE_DRIVER
         value: ffmpeg
       - key: CORS_ORIGINS
@@ -87,6 +93,12 @@ services:
       - key: COGNITO_USER_POOL_ID
         sync: false
       - key: COGNITO_CLIENT_ID
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
         sync: false
       - key: AWS_ACCESS_KEY_ID
         sync: false

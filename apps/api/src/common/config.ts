@@ -1,5 +1,5 @@
 export type AuthMode = "local" | "cognito";
-export type MediaDriver = "s3" | "noop";
+export type MediaDriver = "s3" | "noop" | "cloudinary";
 export type TranscodeDriver = "mock" | "ffmpeg";
 export type ModerationDriver = "noop" | "rekognition" | "manual";
 export type QueueMode = "inline" | "sqs";
@@ -14,6 +14,13 @@ function buildDatabaseUrl(): string {
   const port = process.env.PGPORT ?? "5432";
   const db = process.env.PGDATABASE ?? "janus";
   return `postgresql://${user}:${password}@${host}:${port}/${db}?schema=public`;
+}
+
+function cloudinaryUrlPart(part: "name" | "key" | "secret"): string {
+  const raw = process.env.CLOUDINARY_URL ?? "";
+  const m = raw.match(/^cloudinary:\/\/([^:]+):([^@]+)@(.+)$/);
+  if (!m) return "";
+  return (part === "key" ? m[1] : part === "secret" ? m[2] : m[3]) ?? "";
 }
 
 function buildRedisUrl(): string {
@@ -74,6 +81,10 @@ export const appConfig = {
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean),
   sessionTokenTtl: process.env.SESSION_TOKEN_TTL ?? "24h",
+  cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME ?? cloudinaryUrlPart("name"),
+  cloudinaryApiKey: process.env.CLOUDINARY_API_KEY ?? cloudinaryUrlPart("key"),
+  cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET ?? cloudinaryUrlPart("secret"),
+  cloudinaryStreamingProfile: process.env.CLOUDINARY_STREAMING_PROFILE ?? "full_hd",
   corsOrigins: (process.env.CORS_ORIGINS ?? "http://localhost:3000,http://localhost:8081,http://localhost:3001")
     .split(",")
     .map((s) => s.trim())
@@ -112,13 +123,19 @@ export function assertProdConfig(): void {
   if (!appConfig.redisUrl) {
     throw new Error("REDIS_URL or REDIS_HOST required in production");
   }
-  if (appConfig.awsRegion !== "ap-south-1") {
-    throw new Error("Production region must be ap-south-1");
-  }
-  if (appConfig.awsEndpoint) {
-    throw new Error("AWS_ENDPOINT_URL must not be set in production");
-  }
-  if (appConfig.transcodeDriver === "mock") {
-    throw new Error("TRANSCODE_DRIVER=mock produces unplayable media; use ffmpeg in production");
+  if (appConfig.mediaDriver === "cloudinary") {
+    if (!appConfig.cloudinaryCloudName || !appConfig.cloudinaryApiKey || !appConfig.cloudinaryApiSecret) {
+      throw new Error("CLOUDINARY_CLOUD_NAME/CLOUDINARY_API_KEY/CLOUDINARY_API_SECRET (or CLOUDINARY_URL) required when MEDIA_DRIVER=cloudinary");
+    }
+  } else {
+    if (appConfig.awsRegion !== "ap-south-1") {
+      throw new Error("Production region must be ap-south-1");
+    }
+    if (appConfig.awsEndpoint) {
+      throw new Error("AWS_ENDPOINT_URL must not be set in production");
+    }
+    if (appConfig.transcodeDriver === "mock") {
+      throw new Error("TRANSCODE_DRIVER=mock produces unplayable media; use ffmpeg in production");
+    }
   }
 }

@@ -6,6 +6,7 @@ import { appConfig } from "../common/config";
 import { StorageService } from "../common/storage.service";
 import { RekognitionClient, DetectModerationLabelsCommand } from "@aws-sdk/client-rekognition";
 import { transcodeToHls, type TranscodeResult } from "./ffmpeg-transcoder";
+import { cloudinaryHlsUrl, cloudinaryPosterUrl, cloudinaryResourceType } from "../common/storage.service";
 
 @Injectable()
 export class MediaPipelineService {
@@ -31,6 +32,10 @@ export class MediaPipelineService {
     if (!upload) return;
 
     if (upload.kind === UploadKind.FEED_VIDEO || upload.kind === UploadKind.VAULT_VIDEO) {
+      if (appConfig.mediaDriver === "cloudinary") {
+        await this.finishVideoCloudinary(upload);
+        return;
+      }
       await this.finishVideo(upload);
       return;
     }
@@ -40,6 +45,68 @@ export class MediaPipelineService {
         data: { status: "CONSUMED" },
       });
     }
+  }
+
+  /** Cloudinary path: asset already uploaded direct; confirm it exists, then READY with
+   *  Cloudinary adaptive HLS (streaming profile) + poster URLs. No local ffmpeg. */
+  private async finishVideoCloudinary(
+    upload: Prisma.UploadGetPayload<{ include: { user: { select: { handle: true } }; video: true } }>,
+  ): Promise<void> {
+    const video =
+      upload.video ?? (await this.prisma.video.findUnique({ where: { uploadId: upload.id } }));
+    if (!video) return;
+    const moderation = await this.moderate(upload.s3Bucket, upload.s3Key);
+    if (moderation.status === ModerationStatus.BLOCKED) {
+      await this.prisma.video.update({
+        where: { id: video.id },
+        data: { status: VideoStatus.HIDDEN, moderationStatus: ModerationStatus.BLOCKED, moderationLabels: moderation.labels as Prisma.InputJsonValue, failureReason: "Blocked by moderation" },
+      });
+      return;
+    }
+    let resource;
+    try {
+      resource = await this.storage.cloudinaryResource(
+        upload.s3Key,
+        cloudinaryResourceType({ kind: upload.kind, contentType: upload.contentType }),
+        upload.kind === UploadKind.VAULT_VIDEO,
+      );
+      if (!resource.bytes) throw new Error("Cloudinary asset has no bytes");
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
+      await this.prisma.$transaction(async (tx) => {
+        await tx.video.update({ where: { id: video.id }, data: { status: VideoStatus.FAILED, failureReason: reason.slice(0, 500) } });
+        await tx.upload.update({ where: { id: upload.id }, data: { status: "FAILED" } });
+        await tx.outboxEvent.create({ data: { topic: "notify.send", payload: { type: "VIDEO_FAILED", userId: upload.userId, videoId: video.id } } });
+      });
+      return;
+    }
+    const cloud = appConfig.cloudinaryCloudName;
+    const hlsMasterKey = cloudinaryHlsUrl(cloud, upload.s3Key, appConfig.cloudinaryStreamingProfile);
+    const posterKey = cloudinaryPosterUrl(cloud, upload.s3Key);
+    await this.prisma.$transaction(async (tx) => {
+      await tx.video.update({
+        where: { id: video.id },
+        data: {
+          status: VideoStatus.READY,
+          moderationStatus: moderation.status,
+          moderationLabels: moderation.labels as Prisma.InputJsonValue,
+          hlsMasterKey,
+          posterKey,
+          previewKey: posterKey,
+          watermarkText: `JANUS · @${upload.user.handle}`,
+          publishedAt: new Date(),
+          width: resource.width ?? 1080,
+          height: resource.height ?? 1920,
+          ...(resource.durationMs ? { durationMs: resource.durationMs } : {}),
+        },
+      });
+      await tx.upload.update({ where: { id: upload.id }, data: { status: "CONSUMED" } });
+      await tx.outboxEvent.create({
+        data: { topic: "notify.send", payload: { type: "VIDEO_READY", userId: upload.userId, videoId: video.id, pendingReview: moderation.status !== ModerationStatus.CLEAR } },
+      });
+    });
+    await this.redis.del(`video:${video.id}`);
+    this.logger.log(`Video ${video.id} READY (cloudinary)`);
   }
 
   private async finishVideo(
