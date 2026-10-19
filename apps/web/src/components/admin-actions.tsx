@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { hideVideo, moderateVideo, setUserStatus } from "@/lib/actions";
 import { Button } from "@/components/ui/button";
 
@@ -14,6 +15,7 @@ export function VideoModerationButtons({
   deleted?: boolean;
 }) {
   const hidden = status === "HIDDEN";
+  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   if (deleted) return <span className="text-xs text-muted-foreground">Deleted by author</span>;
@@ -28,6 +30,7 @@ export function VideoModerationButtons({
           start(async () => {
             const res = await hideVideo(id, hidden ? "READY" : "HIDDEN");
             setError(res.error ?? null);
+            if (!res.error) router.refresh();
           })
         }
       >
@@ -39,12 +42,14 @@ export function VideoModerationButtons({
 }
 
 export function ModerationDecisionButtons({ id }: { id: string }) {
+  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const decide = (decision: "APPROVE" | "REJECT") =>
     start(async () => {
       const res = await moderateVideo(id, decision);
       setError(res.error ?? null);
+      if (!res.error) router.refresh();
     });
   return (
     <div className="flex flex-col items-start gap-1">
