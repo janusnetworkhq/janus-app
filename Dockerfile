@@ -27,6 +27,7 @@ ENV NODE_ENV=production
 COPY --from=build --chown=janus:janus /out ./
 COPY --from=build --chown=janus:janus /repo/prisma ./prisma
 RUN npm install -g prisma@6.16.2 >/dev/null 2>&1 || true
+RUN prisma generate --schema ./prisma/schema.prisma
 USER janus
 EXPOSE 3000
 HEALTHCHECK --interval=15s --timeout=3s --start-period=20s --retries=3 \
