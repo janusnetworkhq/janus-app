@@ -45,3 +45,4 @@ infra/local/.localstack
 infra/cdk/cdk.out
 .make/
 deploy-secrets.local.txt
+.vercel
