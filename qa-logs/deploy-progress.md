@@ -19,3 +19,5 @@
 - User-provided values (t10u): NOT visible in agent context; deploy-secrets.local.txt still has ONLY LOCAL_JWT_SECRET. DATABASE_URL/CLOUDINARY_*/RESEND values NOT appended (cannot fabricate). Aiven test/migrate/seed NOT run.
 - Discovered via Render CLI: Key Value service "janus" (free) exists in OHIO region. render.yaml API region changed Singapore->Ohio to match (internal Redis URLs only resolve in-region). User must paste KV internal URL (dashboard Connect panel) as REDIS_URL, or it can be set in Render dashboard.
 - Blockers remaining (names): DATABASE_URL (Aiven), REDIS_URL value, CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET, RESEND_API_KEY.
+- Resend superseded: AUTH_MODE=otp no longer boot-blocked by missing RESEND_API_KEY (config warns at startup; EmailService log fallback only, code never in API response). New test otp-fallback PASS; API suite 35/35, typecheck PASS.
+- Previous run state confirmed incomplete: secrets file only LOCAL_JWT_SECRET, no Render web service (only Key Value janus/Ohio), Aiven not migrated (creds not readable in context/local file).

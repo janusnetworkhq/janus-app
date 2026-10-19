@@ -118,8 +118,9 @@ export function assertProdConfig(): void {
     throw new Error("Cognito pool/client required in production");
   }
   if (appConfig.authMode === "otp" && !appConfig.resendApiKey) {
-    // OTP codes are delivered by email; without Resend they would only be logged.
-    throw new Error("RESEND_API_KEY required in production when AUTH_MODE=otp");
+    // Degraded but intentional (2026-10-19): OTP codes fall back to the server log only
+    // (EmailService), never to an API response. Real email needs RESEND_API_KEY.
+    console.warn("[config] AUTH_MODE=otp without RESEND_API_KEY: OTP codes will be LOGGED ONLY, not emailed. Set RESEND_API_KEY for production email delivery.");
   }
   if (!appConfig.databaseUrl) {
     throw new Error("DATABASE_URL required");

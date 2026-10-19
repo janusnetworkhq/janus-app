@@ -56,6 +56,6 @@ services:
       - key: MEDIA_PUBLIC_BASE
         sync: false
       - key: RESEND_API_KEY
-        sync: false
+        sync: false # optional: OTP codes log-only without it
       - key: EXPO_ACCESS_TOKEN
         sync: false
