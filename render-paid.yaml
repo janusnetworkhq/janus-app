@@ -1,0 +1,110 @@
+# Janus production blueprint (Render) - Singapore region.
+# Secrets (sync: false) are set in the Render dashboard / via API, never committed.
+services:
+  - type: web
+    name: janus-api
+    runtime: docker
+    region: singapore
+    plan: starter
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    dockerCommand: node dist/main.js
+    healthCheckPath: /v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: WORKERS_ENABLED
+        value: "false"
+      - key: QUEUE_MODE
+        value: inline
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: AUTH_MODE
+        value: otp
+      - key: AWS_REGION
+        value: ap-south-1
+      - key: MEDIA_DRIVER
+        value: cloudinary
+      - key: TRANSCODE_DRIVER
+        value: ffmpeg
+      - key: CORS_ORIGINS
+        sync: false
+      - key: LOCAL_JWT_SECRET
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: S3_UPLOADS_BUCKET
+        value: janus-uploads
+      - key: S3_PUBLIC_MEDIA_BUCKET
+        value: janus-public-media
+      - key: S3_VAULT_BUCKET
+        value: janus-vault
+      - key: MEDIA_PUBLIC_BASE
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EXPO_ACCESS_TOKEN
+        sync: false
+  - type: worker
+    name: janus-worker
+    runtime: docker
+    region: singapore
+    plan: standard
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    dockerCommand: node dist/workers/main.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: WORKERS_ENABLED
+        value: "true"
+      - key: QUEUE_MODE
+        value: inline
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: AUTH_MODE
+        value: otp
+      - key: AWS_REGION
+        value: ap-south-1
+      - key: MEDIA_DRIVER
+        value: cloudinary
+      - key: TRANSCODE_DRIVER
+        value: ffmpeg
+      - key: CORS_ORIGINS
+        sync: false
+      - key: LOCAL_JWT_SECRET
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: S3_UPLOADS_BUCKET
+        value: janus-uploads
+      - key: S3_PUBLIC_MEDIA_BUCKET
+        value: janus-public-media
+      - key: S3_VAULT_BUCKET
+        value: janus-vault
+      - key: MEDIA_PUBLIC_BASE
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EXPO_ACCESS_TOKEN
+        sync: false
