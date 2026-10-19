@@ -1,4 +1,4 @@
-# FREE single-service blueprint: API + in-process workers (outbox poller + NDA sweep).
+# FREE single-service blueprint (Ohio - same region as the existing free Render Key Value `janus`, so its internal Redis URL resolves). API + in-process workers (outbox poller + NDA sweep).
 # No separate Background Worker (Render has no free worker tier). LIMITS: free web service
 # spins down after ~15 min idle (~1 min cold start; background timers pause while asleep),
 # 750 instance-hours/month. Paid split (API + janus-worker) is kept in render-paid.yaml.
@@ -8,7 +8,7 @@ services:
   - type: web
     name: janus-api
     runtime: docker
-    region: singapore
+    region: ohio
     plan: free
     dockerfilePath: ./apps/api/Dockerfile
     dockerContext: .
