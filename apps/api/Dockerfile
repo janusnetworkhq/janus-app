@@ -2,7 +2,7 @@
 # Build from the monorepo root:
 #   docker build -f apps/api/Dockerfile -t janus-api .
 
-FROM node:22-alpine AS base
+FROM node:26-alpine AS base
 RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
 WORKDIR /repo
 
@@ -18,7 +18,7 @@ RUN pnpm exec prisma generate && pnpm --filter @janus/api build \
   && pnpm --filter @janus/api deploy --prod /out \
   && mkdir -p /out/dist && cp -R apps/api/dist/. /out/dist/
 
-FROM node:22-alpine AS runtime
+FROM node:26-alpine AS runtime
 RUN apk add --no-cache wget ffmpeg \
   && addgroup -S janus && adduser -S janus -G janus
 WORKDIR /app
