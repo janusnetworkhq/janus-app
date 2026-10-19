@@ -16,7 +16,7 @@ RUN pnpm install --frozen-lockfile --filter @janus/api...
 COPY apps/api ./apps/api
 RUN pnpm exec prisma generate && pnpm --filter @janus/api build \
   && test -f apps/api/dist/main.js \
-  && pnpm --filter @janus/api deploy --prod --legacy /out \
+  && pnpm --filter @janus/api deploy --prod /out \
   && mkdir -p /out/dist && cp -R apps/api/dist/. /out/dist/
 
 FROM node:22-alpine AS runtime

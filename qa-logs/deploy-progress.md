@@ -28,3 +28,4 @@
 - Render CLI service defaulted dockerfilePath ./Dockerfile (root) vs blueprint apps/api/Dockerfile; added root /Dockerfile (copy, keep-in-sync note) and committed/pushed to trigger correct build.
 - Expected boot blocker until user supplies it: CLOUDINARY_CLOUD_NAME missing -> assertProdConfig will fail (MEDIA_DRIVER=cloudinary). Future fix needs only env var set in Render (dashboard srv-… > Environment, or CLI services update) + redeploy; no rebuild of code required beyond restart/deploy.
 - Vercel step deferred until API boots (needs cloud name first); JANUS_API_URL target will be https://janus-api-7bux.onrender.com.
+- Render build dep-dbb09t49v7es73a7aji0 FAILED at Dockerfile step: `pnpm deploy --legacy` unknown option in image pnpm (Docker build never tested before). Verified locally pnpm 9.15.9 deploy without --legacy succeeds; removed --legacy from apps/api/Dockerfile + root Dockerfile, committed/pushed, redeploying.
