@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: "standalone",
+  // standalone is for the Docker image; Vercel builds must not use it (breaks nft tracing)
+  output: process.env.VERCEL ? undefined : "standalone",
   transpilePackages: ["@janus/api-types", "@janus/design-tokens"],
   poweredByHeader: false,
   async headers() {
