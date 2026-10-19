@@ -1,0 +1,17 @@
+export PATH=/usr/local/bin:/opt/homebrew/bin:$HOME/.idb-venv/bin:$PATH
+Q=/Users/gokul/Documents/personal/InnovaX
+show(){ python3 $Q/qa-logs/ui.py show; }
+tapl(){ python3 $Q/qa-logs/ui.py tap "$@"; sleep ${W:-2}; }
+tapxy(){ idb ui tap $1 $2; sleep ${W:-2}; }
+typ(){ idb ui text "$1"; sleep 1; }
+shot(){ xcrun simctl io booted screenshot --type=jpeg $Q/qa-screenshots/$1.jpg >/dev/null 2>&1; mkdir -p $Q/qa-logs/v; sips -Z 520 $Q/qa-screenshots/$1.jpg --out $Q/qa-logs/v/$1.jpg >/dev/null; echo shot $1; }
+typ(){ local s="$1"; local a="${s%%@*}"; idb ui text "$a"; sleep 0.5; if [[ "$s" == *@* ]]; then idb ui text "@"; sleep 0.5; idb ui text "${s#*@}"; fi; sleep 1; }
+fld(){ python3 $Q/qa-logs/ui.py field $1; sleep 1.5; }
+clr(){ for i in $(seq 1 ${1:-40}); do idb ui key 42; done; }
+clr(){ idb ui key-sequence $(for i in $(seq 1 ${1:-40}); do printf "42 "; done); sleep 1; }
+ret(){ idb ui key 40; sleep 1.5; }
+login(){ # email name
+  tapl "Get Started"; fld 0; slow "$1"; tapl Continue; sleep 3
+  if python3 $Q/qa-logs/ui.py show | grep -q "Full Name"; then fld 1; typ "$2"; ret; tapl "Send Verification Code"; else true; fi
+  sleep 4; local C=$(grep -o "$1: \[ [0-9]* \]" $Q/.make/api.log | tail -1 | sed -E "s/.*\[ ([0-9]+) \]/\1/"); echo code=$C; idb ui text $C; sleep 6; }
+slow(){ local s="$1"; for ((i=0;i<${#s};i++)); do idb ui text "${s:$i:1}"; done; sleep 1; }

@@ -1,0 +1,11 @@
+{
+  "app": "npx tsx bin/janus.ts",
+  "watch": {
+    "include": ["**"],
+    "exclude": ["README.md", "cdk*.json", "dist", "node_modules"]
+  },
+  "context": {
+    "@aws-cdk/aws-s3:serverAccessLogsUseBucketPolicy": true,
+    "@aws-cdk/aws-iam:minimizePolicies": true
+  }
+}

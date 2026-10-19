@@ -1,0 +1,54 @@
+name: Prisma migrate (gated)
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: staging or prod
+        type: choice
+        options: [staging, prod]
+      confirm:
+        description: For prod type exactly migrate-prod
+        required: true
+        default: ""
+
+jobs:
+  migrate-staging:
+    if: ${{ inputs.target == 'staging' }}
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - env:
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+        run: |
+          test -n "$DATABASE_URL" || { echo "STAGING_DATABASE_URL missing"; exit 1; }
+          pnpm db:deploy
+
+  migrate-prod:
+    if: ${{ inputs.target == 'prod' && inputs.confirm == 'migrate-prod' }}
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: |
+          test -n "$DATABASE_URL" || { echo "PROD_DATABASE_URL missing"; exit 1; }
+          pnpm db:deploy

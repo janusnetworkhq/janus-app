@@ -1,0 +1,48 @@
+{
+  "name": "janus",
+  "private": true,
+  "version": "0.0.0",
+  "description": "JANUS — video-first marketplace for student innovators",
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down",
+    "infra:logs": "docker compose logs -f",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:migrate:create": "prisma migrate dev --create-only",
+    "db:deploy": "prisma migrate deploy",
+    "db:status": "prisma migrate status",
+    "db:seed": "prisma db seed",
+    "db:studio": "prisma studio",
+    "db:validate": "prisma validate",
+    "db:reset": "prisma migrate reset",
+    "dev:api": "pnpm --filter @janus/api dev",
+    "dev:mobile": "pnpm --filter @janus/mobile start",
+    "dev:web": "pnpm --filter @janus/web dev",
+    "build:web": "pnpm --filter @janus/web build",
+    "test:api": "pnpm --filter @janus/api test",
+    "openapi": "pnpm --filter @janus/api openapi",
+    "build:api": "pnpm --filter @janus/api build",
+    "infra:synth": "pnpm --filter @janus/infra synth",
+    "k6:smoke": "bash ops/k6/run.sh smoke",
+    "k6:slo": "bash ops/k6/run.sh slo",
+    "k6:feed": "bash ops/k6/run.sh feed"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "prisma": "^6.16.2",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.16.2"
+  }
+}

@@ -1,0 +1,45 @@
+# JANUS SLO contract
+# Shared by k6 (ops/k6) and CloudWatch (infra/cdk ComputeStack).
+# Staging feed DoD (docs/07): p95 < 300 ms with 10k video rows.
+# Product SLO (docs/06): feed TTFB p95 < 200 ms.
+
+version: 1
+window:
+  availability: 30d
+  latency: 7d
+  transcode: 7d
+
+objectives:
+  api_availability:
+    target: 0.995
+    paid_target: 0.999
+    signal: alb_target_5xx
+  feed_ttfb_p95_ms:
+    staging_dod: 300
+    product: 200
+    signal: alb_target_response_time_p95
+  time_to_first_frame_p95_ms:
+    target: 1500
+    note: client 4G; not asserted by API k6
+  transcode_success:
+    target: 0.98
+    signal: mediaconvert_job_complete_ratio
+  vault_grant_success:
+    target: 0.999
+    exclude_status: [403]
+    note: 403 VAULT_DENIED is a security pass, not an error
+
+load_staging:
+  feed_get_rps: 2000
+  likes_rps: 200
+  upload_presign_rps: 50
+  playback_rps: 20
+  pass:
+    http_error_rate: 0.02
+    aurora_cpu_pct: 80
+    redis_evictions: 0
+  base_url: alb_dns
+  note: Do not drive 2k RPS through CloudFront WAF from one IP
+
+error_budget:
+  freeze_features_when: availability_slo_burned

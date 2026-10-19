@@ -1,0 +1,29 @@
+name: k6 staging SLO
+
+on:
+  workflow_dispatch:
+    inputs:
+      feed_rps:
+        description: GET /feed arrival rate (use 2000 for DoD)
+        default: "50"
+      strict:
+        description: p95 < 200ms when 1
+        default: "0"
+
+jobs:
+  k6:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run SLO suite against ALB
+        env:
+          BASE_URL: ${{ secrets.STAGING_API_URL }}
+          TOKEN: ${{ secrets.STAGING_ACCESS_TOKEN }}
+          SLO_STRICT: ${{ github.event.inputs.strict }}
+          FEED_RPS: ${{ github.event.inputs.feed_rps }}
+        run: |
+          test -n "$BASE_URL" || { echo "Set STAGING_API_URL (ALB DNS, not CloudFront)"; exit 1; }
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE/ops/k6:/scripts:ro" \
+            -e BASE_URL -e TOKEN -e SLO_STRICT -e FEED_RPS -e LIKE_RPS -e PLAYBACK_RPS -e VIDEO_ID -e ASSET_ID \
+            grafana/k6:0.57.0 run /scripts/slo.js

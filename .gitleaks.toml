@@ -1,0 +1,13 @@
+title = "JANUS gitleaks"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Example env files, lockfile, generated OpenAPI"
+paths = [
+  '''\.env\.example$''',
+  '''pnpm-lock\.yaml$''',
+  '''packages/api-types/openapi\.json$''',
+  '''apps/.*/\.env\.example$''',
+]

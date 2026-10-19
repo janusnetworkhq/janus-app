@@ -1,0 +1,89 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: janus
+          POSTGRES_PASSWORD: janus
+          POSTGRES_DB: janus
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U janus -d janus"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
+    env:
+      DATABASE_URL: postgresql://janus:janus@localhost:5432/janus?schema=public
+      REDIS_URL: redis://localhost:6379/0
+      AUTH_MODE: local
+      MEDIA_DRIVER: noop
+      TRANSCODE_DRIVER: mock
+      MODERATION_DRIVER: noop
+      WORKERS_ENABLED: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:generate
+      - run: pnpm db:deploy
+      - run: pnpm --filter @janus/api typecheck
+      - run: pnpm test:api
+      - run: pnpm --filter @janus/web typecheck
+      - run: pnpm --filter @janus/mobile typecheck
+      - name: npm audit (high+)
+        continue-on-error: true
+        run: pnpm audit --audit-level=high
+
+  infra:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @janus/infra typecheck
+      - run: pnpm infra:synth
+
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Gitleaks
+        run: >
+          docker run --rm -v "$PWD:/src"
+          zricethezav/gitleaks:v8.24.3
+          detect --source=/src --config=/src/.gitleaks.toml --verbose

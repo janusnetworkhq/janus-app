@@ -1,0 +1,13 @@
+node_modules
+.git
+.turbo
+.next
+dist
+coverage
+apps/mobile
+apps/web/.next
+**/.env
+**/.env.local
+infra/cdk/cdk.out
+*.md
+.DS_Store

@@ -1,0 +1,632 @@
+// JANUS — system of record (Aurora PostgreSQL)
+// Canonical model: docs/03-data-model.md
+//
+// Design rules
+// - Legal / vault / audit rows are never hard-deleted (Restrict + soft status).
+// - Join tables use composite keys (smaller, faster, no unused cuids).
+// - Hot-path filters live as PARTIAL indexes in the init migration (Prisma cannot
+//   express WHERE on indexes). Do not drop those indexes in later migrate diffs.
+// - Email / handle are citext so uniqueness is case-insensitive without extra columns.
+// - Application role in production: INSERT-only on audit_events; no DELETE on
+//   nda_agreements. Local uses the migrate user.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [citext]
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  STUDENT
+  RECRUITER
+  PLATFORM_ADMIN
+
+  @@map("user_role")
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+
+  @@map("user_status")
+}
+
+enum AuthProvider {
+  GOOGLE
+  APPLE
+  PHONE
+
+  @@map("auth_provider")
+}
+
+enum OrgPlan {
+  FREE_PILOT
+  SAAS
+
+  @@map("org_plan")
+}
+
+enum OrgStatus {
+  ACTIVE
+  SUSPENDED
+
+  @@map("org_status")
+}
+
+enum UploadKind {
+  FEED_VIDEO
+  VAULT_FILE
+  VAULT_VIDEO
+  AVATAR
+  BANNER
+
+  @@map("upload_kind")
+}
+
+enum UploadStatus {
+  CREATED
+  UPLOADED
+  CONSUMED
+  EXPIRED
+  FAILED
+
+  @@map("upload_status")
+}
+
+enum VideoStatus {
+  PROCESSING
+  READY
+  FAILED
+  HIDDEN
+
+  @@map("video_status")
+}
+
+enum VideoVisibility {
+  PUBLIC_FEED
+  UNLISTED
+
+  @@map("video_visibility")
+}
+
+enum ModerationStatus {
+  PENDING
+  CLEAR
+  FLAGGED
+  BLOCKED
+
+  @@map("moderation_status")
+}
+
+enum RenditionKind {
+  HLS_540
+  HLS_720
+  HLS_1080
+  POSTER
+  PREVIEW
+
+  @@map("rendition_kind")
+}
+
+enum VaultAssetKind {
+  SCHEMATIC
+  CODE_ARCHIVE
+  DOCUMENT
+  HIGH_RES_VIDEO
+
+  @@map("vault_asset_kind")
+}
+
+enum NdaRequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+
+  @@map("nda_request_status")
+}
+
+enum AgreementStatus {
+  SIGNED
+  REVOKED
+
+  @@map("agreement_status")
+}
+
+enum OutboxStatus {
+  PENDING
+  PUBLISHED
+  FAILED
+
+  @@map("outbox_status")
+}
+
+enum AuditAction {
+  ACCESS_GRANTED
+  ACCESS_DENIED
+  NDA_REQUESTED
+  NDA_DECIDED
+  NDA_SIGNED
+  NDA_REVOKED
+  VIDEO_HIDDEN
+  USER_SUSPENDED
+  USER_RESTORED
+  GRANT_REVOKED
+  VAULT_UPLOADED
+  PROFILE_UPDATED
+
+  @@map("audit_action")
+}
+
+// ---------------------------------------------------------------------------
+// Identity
+// ---------------------------------------------------------------------------
+
+model User {
+  id               String        @id @default(cuid())
+  cognitoSub       String        @unique @map("cognito_sub") @db.VarChar(128)
+  email            String?       @unique @db.Citext
+  phoneE164        String?       @unique @map("phone_e164") @db.VarChar(16)
+  handle           String        @unique @db.Citext
+  displayName      String?       @map("display_name") @db.VarChar(80)
+  avatarKey        String?       @map("avatar_key") @db.VarChar(1024)
+  bannerKey        String?       @map("banner_key") @db.VarChar(1024)
+  role             UserRole?
+  status           UserStatus    @default(ACTIVE)
+  profileComplete  Boolean       @default(false) @map("profile_complete")
+  lastAuthProvider AuthProvider? @map("last_auth_provider")
+  lastLoginAt      DateTime?     @map("last_login_at")
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+
+  studentProfile     StudentProfile?
+  recruiterProfile   RecruiterProfile?
+  videos             Video[]             @relation("VideoAuthor")
+  uploads            Upload[]
+  vaultAssets        VaultAsset[]        @relation("VaultOwner")
+  follows            Follow[]            @relation("FollowFrom")
+  followers          Follow[]            @relation("FollowTo")
+  likes              VideoLike[]
+  comments           Comment[]
+  bookmarks          Bookmark[]
+  impressions        FeedImpression[]
+  ndaRequestsOut     NdaRequest[]        @relation("NdaRecruiter")
+  ndaRequestsIn      NdaRequest[]        @relation("NdaStudent")
+  agreements         NdaAgreement[]      @relation("AgreementSigner")
+  grants             AccessGrant[]       @relation("GrantRecruiter")
+  studentGrants      AccessGrant[]       @relation("GrantStudent")
+  auditEvents        AuditEvent[]
+  deviceSessions     DeviceSession[]
+  idempotencyRecords IdempotencyRecord[]
+
+  @@index([role, status])
+  @@index([status, createdAt(sort: Desc)])
+  @@map("users")
+}
+
+model StudentProfile {
+  id                   String   @id @default(cuid())
+  userId               String   @unique @map("user_id")
+  university           String?  @db.VarChar(160)
+  universityNormalized String?  @map("university_normalized") @db.VarChar(160)
+  graduationYear       Int?     @map("graduation_year")
+  headline             String?  @db.VarChar(160)
+  bio                  String?  @db.VarChar(2000)
+  city                 String?  @db.VarChar(80)
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([universityNormalized])
+  @@index([city])
+  @@map("student_profiles")
+}
+
+model Organization {
+  id        String    @id @default(cuid())
+  name      String    @db.VarChar(160)
+  slug      String    @unique @db.Citext
+  plan      OrgPlan   @default(FREE_PILOT)
+  status    OrgStatus @default(ACTIVE)
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  recruiters RecruiterProfile[]
+
+  @@index([plan, status])
+  @@map("organizations")
+}
+
+model RecruiterProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique @map("user_id")
+  orgId     String   @map("org_id")
+  title     String?  @db.VarChar(120)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  org  Organization @relation(fields: [orgId], references: [id], onDelete: Restrict)
+
+  @@index([orgId])
+  @@map("recruiter_profiles")
+}
+
+model DeviceSession {
+  id               String    @id @default(cuid())
+  userId           String    @map("user_id")
+  deviceId         String    @map("device_id") @db.VarChar(128)
+  userAgent        String?   @map("user_agent") @db.VarChar(512)
+  ipAddress        String?   @map("ip_address") @db.VarChar(45)
+  refreshTokenHash String?   @map("refresh_token_hash") @db.Char(64)
+  lastSeenAt       DateTime  @default(now()) @map("last_seen_at")
+  revokedAt        DateTime? @map("revoked_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, deviceId])
+  @@index([userId, revokedAt])
+  @@map("device_sessions")
+}
+
+// ---------------------------------------------------------------------------
+// Media
+// ---------------------------------------------------------------------------
+
+model Upload {
+  id          String       @id @default(cuid())
+  userId      String       @map("user_id")
+  kind        UploadKind
+  status      UploadStatus @default(CREATED)
+  s3Bucket    String       @map("s3_bucket") @db.VarChar(63)
+  s3Key       String       @unique @map("s3_key") @db.VarChar(1024)
+  contentType String       @map("content_type") @db.VarChar(128)
+  byteSize    Int          @map("byte_size")
+  sha256      String?      @db.Char(64)
+  etag        String?      @db.VarChar(64)
+  expiresAt   DateTime     @map("expires_at")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Restrict)
+  video Video?
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([status, expiresAt])
+  @@map("uploads")
+}
+
+model Video {
+  id               String           @id @default(cuid())
+  authorId         String           @map("author_id")
+  uploadId         String?          @unique @map("upload_id")
+  status           VideoStatus      @default(PROCESSING)
+  visibility       VideoVisibility  @default(PUBLIC_FEED)
+  /// Worker sets CLEAR in the same transaction as READY. The feed partial index requires both.
+  moderationStatus ModerationStatus @default(PENDING) @map("moderation_status")
+  moderationLabels Json?            @map("moderation_labels")
+  caption          String?          @db.VarChar(2200)
+  durationMs       Int?             @map("duration_ms")
+  width            Int?
+  height           Int?
+  hlsMasterKey     String?          @map("hls_master_key") @db.VarChar(1024)
+  posterKey        String?          @map("poster_key") @db.VarChar(1024)
+  previewKey       String?          @map("preview_key") @db.VarChar(1024)
+  watermarkText    String?          @map("watermark_text") @db.VarChar(80)
+  transcodeJobId   String?          @map("transcode_job_id") @db.VarChar(128)
+  failureReason    String?          @map("failure_reason") @db.VarChar(500)
+  hasVault         Boolean          @default(false) @map("has_vault")
+  likeCount        Int              @default(0) @map("like_count")
+  commentCount     Int              @default(0) @map("comment_count")
+  bookmarkCount    Int              @default(0) @map("bookmark_count")
+  deletedAt        DateTime?        @map("deleted_at")
+  publishedAt      DateTime?        @map("published_at")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  author      User             @relation("VideoAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  upload      Upload?          @relation(fields: [uploadId], references: [id], onDelete: SetNull)
+  renditions  VideoRendition[]
+  likes       VideoLike[]
+  comments    Comment[]
+  bookmarks   Bookmark[]
+  impressions FeedImpression[]
+  vaultLinks  VideoVaultLink[]
+  ndaRequests NdaRequest[]
+
+  @@index([authorId, createdAt(sort: Desc)])
+  @@index([visibility, status, createdAt(sort: Desc)])
+  @@index([status, createdAt(sort: Desc)])
+  @@map("videos")
+}
+
+model VideoRendition {
+  id        String        @id @default(cuid())
+  videoId   String        @map("video_id")
+  kind      RenditionKind
+  s3Key     String        @map("s3_key") @db.VarChar(1024)
+  bitrate   Int?
+  width     Int?
+  height    Int?
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@unique([videoId, kind])
+  @@index([videoId])
+  @@map("video_renditions")
+}
+
+model VaultAsset {
+  id                String         @id @default(cuid())
+  ownerId           String         @map("owner_id")
+  kind              VaultAssetKind
+  originalName      String         @map("original_name") @db.VarChar(255)
+  contentType       String         @map("content_type") @db.VarChar(128)
+  byteSize          Int            @map("byte_size")
+  s3Key             String         @unique @map("s3_key") @db.VarChar(1024)
+  kmsKeyArn         String         @map("kms_key_arn") @db.VarChar(2048)
+  encryptedDek      Bytes?         @map("encrypted_dek")
+  encryptionIv      Bytes?         @map("encryption_iv")
+  encryptionAuthTag Bytes?         @map("encryption_auth_tag")
+  checksumSha256    String         @map("checksum_sha256") @db.Char(64)
+  deletedAt         DateTime?      @map("deleted_at")
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
+
+  owner      User             @relation("VaultOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  videoLinks VideoVaultLink[]
+  grants     AccessGrant[]
+
+  @@index([ownerId, createdAt(sort: Desc)])
+  @@map("vault_assets")
+}
+
+model VideoVaultLink {
+  videoId      String   @map("video_id")
+  vaultAssetId String   @map("vault_asset_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  video      Video      @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  vaultAsset VaultAsset @relation(fields: [vaultAssetId], references: [id], onDelete: Restrict)
+
+  @@id([videoId, vaultAssetId])
+  @@index([vaultAssetId])
+  @@map("video_vault_links")
+}
+
+// ---------------------------------------------------------------------------
+// Social / feed
+// ---------------------------------------------------------------------------
+
+model Follow {
+  followerId String   @map("follower_id")
+  followeeId String   @map("followee_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  follower User @relation("FollowFrom", fields: [followerId], references: [id], onDelete: Cascade)
+  followee User @relation("FollowTo", fields: [followeeId], references: [id], onDelete: Cascade)
+
+  @@id([followerId, followeeId])
+  @@index([followeeId, createdAt(sort: Desc)])
+  @@map("follows")
+}
+
+model VideoLike {
+  userId    String   @map("user_id")
+  videoId   String   @map("video_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@id([userId, videoId])
+  @@index([videoId, createdAt(sort: Desc)])
+  @@map("video_likes")
+}
+
+model Comment {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  videoId   String    @map("video_id")
+  body      String    @db.VarChar(500)
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Restrict)
+  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@index([videoId, createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("comments")
+}
+
+model Bookmark {
+  userId    String   @map("user_id")
+  videoId   String   @map("video_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@id([userId, videoId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([videoId])
+  @@map("bookmarks")
+}
+
+model FeedImpression {
+  userId  String   @map("user_id")
+  videoId String   @map("video_id")
+  seenAt  DateTime @default(now()) @map("seen_at")
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@id([userId, videoId])
+  @@index([userId, seenAt])
+  @@map("feed_impressions")
+}
+
+// ---------------------------------------------------------------------------
+// NDA + vault grants
+// ---------------------------------------------------------------------------
+
+model NdaTemplate {
+  id            String   @id @default(cuid())
+  version       Int      @unique
+  title         String   @db.VarChar(200)
+  body          String
+  contentSha256 String   @map("content_sha256") @db.Char(64)
+  isActive      Boolean  @default(false) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  requests NdaRequest[]
+
+  @@map("nda_templates")
+}
+
+model NdaRequest {
+  id          String           @id @default(cuid())
+  recruiterId String           @map("recruiter_id")
+  studentId   String           @map("student_id")
+  videoId     String?          @map("video_id")
+  templateId  String           @map("template_id")
+  reason      String?          @db.VarChar(500)
+  status      NdaRequestStatus @default(PENDING)
+  expiresAt   DateTime         @map("expires_at")
+  decidedAt   DateTime?        @map("decided_at")
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+
+  recruiter User          @relation("NdaRecruiter", fields: [recruiterId], references: [id], onDelete: Restrict)
+  student   User          @relation("NdaStudent", fields: [studentId], references: [id], onDelete: Restrict)
+  video     Video?        @relation(fields: [videoId], references: [id], onDelete: SetNull)
+  template  NdaTemplate   @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  agreement NdaAgreement?
+
+  @@index([studentId, status, createdAt(sort: Desc)])
+  @@index([recruiterId, status, createdAt(sort: Desc)])
+  @@index([expiresAt, status])
+  @@map("nda_requests")
+}
+
+model NdaAgreement {
+  id                 String          @id @default(cuid())
+  requestId          String          @unique @map("request_id")
+  signerId           String          @map("signer_id")
+  signerName         String          @map("signer_name") @db.VarChar(120)
+  templateSha256     String          @map("template_sha256") @db.Char(64)
+  artifactS3Key      String          @map("artifact_s3_key") @db.VarChar(1024)
+  ipAddress          String          @map("ip_address") @db.VarChar(45)
+  userAgent          String          @map("user_agent") @db.VarChar(512)
+  providerEnvelopeId String?         @map("provider_envelope_id") @db.VarChar(128)
+  status             AgreementStatus @default(SIGNED)
+  signedAt           DateTime        @default(now()) @map("signed_at")
+  revokedAt          DateTime?       @map("revoked_at")
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+
+  request NdaRequest    @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  signer  User          @relation("AgreementSigner", fields: [signerId], references: [id], onDelete: Restrict)
+  grants  AccessGrant[]
+
+  @@index([signerId, signedAt(sort: Desc)])
+  @@map("nda_agreements")
+}
+
+model AccessGrant {
+  id           String    @id @default(cuid())
+  agreementId  String    @map("agreement_id")
+  recruiterId  String    @map("recruiter_id")
+  studentId    String    @map("student_id")
+  vaultAssetId String?   @map("vault_asset_id")
+  expiresAt    DateTime  @map("expires_at")
+  revokedAt    DateTime? @map("revoked_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  agreement  NdaAgreement @relation(fields: [agreementId], references: [id], onDelete: Restrict)
+  recruiter  User         @relation("GrantRecruiter", fields: [recruiterId], references: [id], onDelete: Restrict)
+  student    User         @relation("GrantStudent", fields: [studentId], references: [id], onDelete: Restrict)
+  vaultAsset VaultAsset?  @relation(fields: [vaultAssetId], references: [id], onDelete: Restrict)
+
+  @@index([recruiterId, studentId])
+  @@index([agreementId])
+  @@index([expiresAt])
+  @@map("access_grants")
+}
+
+// ---------------------------------------------------------------------------
+// Platform infrastructure
+// ---------------------------------------------------------------------------
+
+model AuditEvent {
+  id           String      @id @default(cuid())
+  actorId      String?     @map("actor_id")
+  action       AuditAction
+  resourceType String      @map("resource_type") @db.VarChar(64)
+  resourceId   String      @map("resource_id") @db.VarChar(64)
+  ip           String?     @db.VarChar(45)
+  userAgent    String?     @map("user_agent") @db.VarChar(512)
+  metadata     Json?
+  createdAt    DateTime    @default(now()) @map("created_at")
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorId, createdAt(sort: Desc)])
+  @@index([resourceType, resourceId, createdAt(sort: Desc)])
+  @@index([action, createdAt(sort: Desc)])
+  @@map("audit_events")
+}
+
+model OutboxEvent {
+  id          String       @id @default(cuid())
+  topic       String       @db.VarChar(128)
+  payload     Json
+  status      OutboxStatus @default(PENDING)
+  attempts    Int          @default(0)
+  lastError   String?      @map("last_error") @db.VarChar(1000)
+  availableAt DateTime     @default(now()) @map("available_at")
+  publishedAt DateTime?    @map("published_at")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  @@index([status, availableAt])
+  @@index([topic, createdAt])
+  @@map("outbox_events")
+}
+
+model IdempotencyRecord {
+  id             String   @id @default(cuid())
+  userId         String   @map("user_id")
+  key            String   @db.VarChar(128)
+  route          String   @db.VarChar(128)
+  requestHash    String   @map("request_hash") @db.Char(64)
+  responseStatus Int?     @map("response_status")
+  responseBody   Json?    @map("response_body")
+  createdAt      DateTime @default(now()) @map("created_at")
+  expiresAt      DateTime @map("expires_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key, route])
+  @@index([expiresAt])
+  @@map("idempotency_records")
+}

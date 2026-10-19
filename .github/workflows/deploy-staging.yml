@@ -1,0 +1,43 @@
+name: Deploy staging
+
+# Requires GitHub OIDC → AWS role (AWS_STAGING_DEPLOY_ROLE) and an image tag in ECR.
+# Do not attach this to every push until credentials exist.
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: ECR tag already pushed to janus-api-staging
+        default: staging
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      IMAGE_TAG: ${{ github.event.inputs.image_tag }}
+      CDK_STAGING_ACCOUNT: ${{ secrets.CDK_STAGING_ACCOUNT }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_STAGING_DEPLOY_ROLE }}
+          aws-region: ap-south-1
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm infra:synth
+      - name: Prisma migrate staging
+        env:
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+        run: pnpm db:deploy
+      - name: CDK deploy staging
+        working-directory: infra/cdk
+        run: pnpm exec cdk deploy 'Janus-staging/*' --require-approval broadening

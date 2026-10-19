@@ -1,0 +1,60 @@
+PASS onboard student                            exp=201          got=201  {"id":"cmvah3aoe0000ssx8wa8med4d","cognitoSub":"qa2-stu-1792125231","email":"qa2-stu-1792125231@janus.test","phoneE164":null,"handle":"qa2stu179212523
+PASS onboard student2                           exp=201          got=201  {"id":"cmvah3aqw0003ssx8oupkt0wd","cognitoSub":"qa2-stub-1792125231","email":"qa2-stub-1792125231@janus.test","phoneE164":null,"handle":"qa2stub179212
+PASS onboard recruiter                          exp=201          got=201  {"id":"cmvah3ark0006ssx8i6k3oktt","cognitoSub":"qa2-rec-1792125231","email":"qa2-rec-1792125231@janus.test","phoneE164":null,"handle":"qa2rec179212523
+PASS admin me (creates row)                     exp=200          got=200  {"id":"cmvah3asb000assx83kq63sao","cognitoSub":"qa2-adm-1792125231","email":"qa2-adm-1792125231@janus.test","phoneE164":null,"handle":"qa2admin","disp
+PASS upload ticket feed video                   exp=200 201      got=201  {"uploadId":"cmvah3aw4000cssx8lb09o15y","uploadUrl":"http://localhost:4566/janus-uploads/uploads/cmvah3aoe0000ssx8wa8med4d/1792125231844-s5hk8l.mp4?X-
+PASS upload complete before PUT (missing obj)   exp=400          got=400  {"error":{"code":"UPLOAD_MISSING","message":"Object not found in storage","requestId":"b5da9ce3-c9de-49ba-9272-24346fc65114"}}
+   PUT video -> 200
+PASS upload too long duration                   exp=400          got=400  {"error":{"code":"DURATION","message":"Max 90 seconds","requestId":"64ef2c37-77fb-49fc-9a2f-74ebbbe72e73"}}
+PASS upload as recruiter                        exp=403          got=403  {"error":{"code":"FORBIDDEN","message":"Only students can upload videos","requestId":"d66e62ce-9c58-444b-9cf9-26fcca0a6421"}}
+PASS upload complete by other student           exp=403 404      got=404  {"error":{"code":"NOT_FOUND","message":"Upload not found","requestId":"4943a61a-e984-4c0e-8121-483d2212f800"}}
+PASS upload complete                            exp=200 201      got=201  {"status":"PROCESSING","videoId":"cmvah3aw6000essx80fkct51l"}
+PASS upload complete twice                      exp=200 201 409 400 got=409  {"error":{"code":"UPLOAD_STATE","message":"Upload already completed","requestId":"d3137395-dace-495d-b1a0-4a11abc74a6c"}}
+PASS video READY                                exp=200          got=200  {"id":"cmvah3aw6000essx80fkct51l","caption":"QA2 prototype","durationMs":15000,"status":"READY","hasVault":false,"likeCount":0,"commentCount":0,"bookm
+   status=READY
+PASS vault file ticket                          exp=200 201      got=201  {"uploadId":"cmvah3e7t000nssx8l9wv7gei","uploadUrl":"http://localhost:4566/janus-vault/uploads/cmvah3aoe0000ssx8wa8med4d/1792125236152-ru541h.pdf?X-Am
+   PUT pdf -> 200
+PASS vault file complete                        exp=200 201      got=201  {"status":"CONSUMED"}
+PASS like                                       exp=200 201      got=201  {"liked":true}
+PASS like again                                 exp=200 201      got=201  {"liked":true}
+PASS like unknown                               exp=404          got=404  {"error":{"code":"NOT_FOUND","message":"Not found","requestId":"faba7c56-4443-4301-9747-7b800923bb53"}}
+PASS bookmark                                   exp=200 201      got=201  {"saved":true}
+PASS bookmarks list                             exp=200          got=200  {"items":[{"id":"cmvah3aw6000essx80fkct51l","caption":"QA2 prototype","durationMs":15000,"status":"READY","hasVault":true,"likeCount":1,"commentCount"
+PASS follow                                     exp=200 201      got=201  {"following":true}
+PASS follow self                                exp=400 409      got=400  {"error":{"code":"SELF_FOLLOW","message":"Cannot follow yourself","requestId":"fbdacd93-443b-4317-84fa-222e8b70fd3b"}}
+PASS follow unknown                             exp=404          got=404  {"error":{"code":"NOT_FOUND","message":"Not found","requestId":"8488c85c-32c2-48fc-9428-714e4c8244f5"}}
+PASS vault before NDA                           exp=403          got=403  {"error":{"code":"VAULT_DENIED","message":"No active NDA grant for this asset","requestId":"a4b04345-ce30-4d44-bef8-edcf2e1f421d"}}
+PASS template                                   exp=200          got=200  {"id":"cmtck2jl10000sszmjd7cqj4o","version":1,"title":"JANUS Mutual Non-Disclosure Agreement v1","body":"JANUS MUTUAL NON-DISCLOSURE AGREEMENT (PILOT)
+PASS nda request                                exp=200 201      got=201  {"id":"cmvah3egr000vssx8vv7oio6f","recruiterId":"cmvah3ark0006ssx8i6k3oktt","studentId":"cmvah3aoe0000ssx8wa8med4d","videoId":"cmvah3aw6000essx80fkct5
+PASS nda request idempotent replay              exp=200 201      got=201  {"id":"cmvah3egr000vssx8vv7oio6f","reason":"hiring","status":"PENDING","videoId":"cmvah3aw6000essx80fkct51l","createdAt":"2026-10-16T04:33:56.476Z","d
+   same id: yes
+PASS nda request to self                        exp=400 403 409  got=400  {"error":{"code":"SELF_REQUEST","message":"You cannot request access to your own project files","requestId":"02eb0505-df38-4eb2-9a38-38654752d1e1"}}
+PASS nda request unknown student                exp=404 400      got=404  {"error":{"code":"NOT_FOUND","message":"Student not found","requestId":"100f2940-1075-48d2-a7ea-43229f276ce2"}}
+PASS inbox student                              exp=200          got=200  [{"id":"cmvah3egr000vssx8vv7oio6f","recruiterId":"cmvah3ark0006ssx8i6k3oktt","studentId":"cmvah3aoe0000ssx8wa8med4d","videoId":"cmvah3aw6000essx80fkct
+   count=1
+PASS outbound recruiter                         exp=200          got=200  [{"id":"cmvah3egr000vssx8vv7oio6f","recruiterId":"cmvah3ark0006ssx8i6k3oktt","studentId":"cmvah3aoe0000ssx8wa8med4d","videoId":"cmvah3aw6000essx80fkct
+FAIL sign before accept                         exp=400 409      got=403  {"error":{"code":"NDA_NOT_ACCEPTED","message":"Student has not accepted","requestId":"20b79427-cea9-45ec-a258-62a4dd472ed7"}}
+PASS decide by other student                    exp=403 404      got=404  {"error":{"code":"NOT_FOUND","message":"Not found","requestId":"894bccfc-46e0-444d-affe-f4b375563eb6"}}
+PASS decide bad body ("false" string)           exp=400          got=400  {"error":{"code":"VALIDATION_ERROR","message":"accept must be a boolean value","requestId":"f2db0517-0a94-45fd-9cc8-82c31478f02c"}}
+PASS decide accept                              exp=200 201      got=201  {"id":"cmvah3egr000vssx8vv7oio6f","recruiterId":"cmvah3ark0006ssx8i6k3oktt","studentId":"cmvah3aoe0000ssx8wa8med4d","videoId":"cmvah3aw6000essx80fkct5
+PASS sign wrong hash                            exp=400 409      got=400  {"error":{"code":"HASH_MISMATCH","message":"Template hash does not match","requestId":"34b72dd2-0534-4189-9faf-a64de12282c2"}}
+FAIL sign by student                            exp=403 400      got=404  {"error":{"code":"NOT_FOUND","message":"Not found","requestId":"acfd2222-19bd-454c-9fe3-14154189e7c4"}}
+PASS sign                                       exp=200 201      got=201  {"agreementId":"cmvah3ent0014ssx8jafdrgbz","grantExpiresAt":"2026-10-23T04:33:56.729Z"}
+   keys=['agreementId', 'grantExpiresAt']
+PASS vault list                                 exp=200          got=200  {"items":[{"id":"cmvah3ea9000pssx8cgmmtv4m","kind":"SCHEMATIC","originalName":"s.pdf","contentType":"application/pdf","byteSize":2048,"createdAt":"202
+PASS vault playback                             exp=200 201      got=201  {"url":"http://localhost:4566/janus-vault/uploads/cmvah3aoe0000ssx8wa8med4d/1792125236152-ru541h.pdf?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sh
+PASS vault playback unknown asset               exp=403 404      got=403  {"error":{"code":"VAULT_DENIED","message":"No active NDA grant for this asset","requestId":"ff54322a-71a9-4356-87ec-8f296e3943ea"}}
+PASS revoke by other student                    exp=403 404      got=404  {"error":{"code":"NOT_FOUND","message":"Not found","requestId":"823a6161-7870-4dc4-a377-14a3c171bd9c"}}
+PASS revoke grant                               exp=200 201      got=201  {"revoked":true}
+PASS vault after revoke                         exp=403          got=403  {"error":{"code":"VAULT_DENIED","message":"No active NDA grant for this asset","requestId":"fd060512-44c2-4cae-9f73-79a2c025ba5b"}}
+PASS admin videos                               exp=200          got=200  [{"id":"cmvah3aw6000essx80fkct51l","status":"READY","moderationStatus":"CLEAR","caption":"QA2 prototype","createdAt":"2026-10-16T04:33:51.847Z","autho
+PASS admin users                                exp=200          got=200  [{"id":"cmvah3asb000assx83kq63sao","handle":"qa2adm1792125231","email":"qa2-adm-1792125231@janus.test","role":"PLATFORM_ADMIN","status":"ACTIVE","crea
+PASS admin audit                                exp=200          got=200  [{"id":"cmvah3eth001issx8tj03575w","actorId":"cmvah3ark0006ssx8i6k3oktt","action":"ACCESS_DENIED","resourceType":"vault_asset","resourceId":"cmvah3aoe
+PASS admin videos as student                    exp=403          got=403  {"error":{"code":"FORBIDDEN","message":"Insufficient role","requestId":"13bd8810-f4e8-40bf-b3c5-ce4bee0fe1ad"}}
+PASS admin patch bad status                     exp=400          got=400  {"error":{"code":"VALIDATION_ERROR","message":"status must be one of the following values: PROCESSING, READY, FAILED, HIDDEN","requestId":"8cf5ee89-94
+PASS admin hide video                           exp=200          got=200  {"id":"cmvah3aw6000essx80fkct51l","authorId":"cmvah3aoe0000ssx8wa8med4d","uploadId":"cmvah3aw4000cssx8lb09o15y","status":"HIDDEN","visibility":"PUBLIC
+PASS hidden video in feed?                      exp=200          got=200  {"items":[{"id":"cmty78p7a000qss96b8t9wyge","caption":"Testing sub-50ms latency finger articulation using surface electromyography sensors and custom 
+   hidden present: False
+PASS delete video by other student              exp=403 404      got=404  {"error":{"code":"NOT_FOUND","message":"Not found","requestId":"c2aeaf3e-eddb-4872-83b2-a9d40f6027a5"}}
+FAIL delete own video                           exp=200 204      got=404  {"error":{"code":"NOT_FOUND","message":"Not found","requestId":"121a4453-5cdc-4bdb-bf85-917c3d071bde"}}
+SID=cmvah3aoe0000ssx8wa8med4d NID=cmvah3egr000vssx8vv7oio6f GID=cmvah3env0016ssx8qs8qzw8l S=1792125231

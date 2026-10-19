@@ -1,0 +1,72 @@
+PASS health                                        exp=200      got=200  {"ok":true,"service":"janus-api"}
+PASS v1/health                                     exp=200      got=200  {"ok":true}
+PASS ready                                         exp=200      got=200  {"ok":true,"redis":true,"postgres":true}
+PASS me no token                                   exp=401      got=401  {"error":{"code":"UNAUTHORIZED","message":"Authentication required","requestId":"998ca98e-69b4-4392-ab0f-42f72a0d342c"}}
+PASS me bad token                                  exp=401      got=401  {"error":{"code":"UNAUTHORIZED","message":"Invalid or expired token","requestId":"e39511f0-c5ed-4dfd-be69-0cc4262f1d29"}}
+PASS feed no token                                 exp=401      got=401  {"error":{"code":"UNAUTHORIZED","message":"Authentication required","requestId":"178c2866-8651-48bd-a117-0dc3fe93ea78"}}
+PASS dev token bad body                            exp=400      got=400  {"error":{"code":"VALIDATION_ERROR","message":"property foo should not exist, sub must be shorter than or equal to 128 characters, sub must be a string","reques
+PASS lookup bad email                              exp=400      got=400  {"error":{"code":"VALIDATION_ERROR","message":"email must be an email","requestId":"a74eb85c-19cc-4096-b06b-565b65b3cbe0"}}
+PASS lookup seeded                                 exp=200      got=200  {"exists":true,"profileComplete":true,"displayName":"Arjun Mehta"}
+PASS otp send                                      exp=200      got=200  {"success":true,"email":"qa-otp-1792124992@janus.test","exists":false,"message":"Verification code dispatched to your email"}
+PASS otp resend within cooldown                    exp=429      got=429  {"error":{"code":"RATE_LIMITED","message":"Please wait before requesting another code","requestId":"ddc21c63-fb6c-477d-aced-794bea7f6d27"}}
+PASS otp verify short code                         exp=400      got=400  {"error":{"code":"VALIDATION_ERROR","message":"code must be longer than or equal to 4 characters","requestId":"3956150d-c230-4b64-a805-b80c305464a0"}}
+PASS otp wrong code #1                             exp=400      got=400  {"error":{"code":"INVALID_OTP","message":"Incorrect verification code. Please check and try again.","requestId":"9eaaf6db-157a-401d-b820-17f19a0727bc"}}
+PASS otp wrong code #2                             exp=400      got=400  {"error":{"code":"INVALID_OTP","message":"Incorrect verification code. Please check and try again.","requestId":"ad21d540-2dc3-463c-a1eb-0349ead4259d"}}
+PASS otp wrong code #3                             exp=400      got=400  {"error":{"code":"INVALID_OTP","message":"Incorrect verification code. Please check and try again.","requestId":"7ece4f81-636c-4f78-8458-21095900ad54"}}
+PASS otp wrong code #4                             exp=400      got=400  {"error":{"code":"INVALID_OTP","message":"Incorrect verification code. Please check and try again.","requestId":"74ac5155-a297-4b85-a128-87a9678503c2"}}
+PASS otp wrong code #5 lockout                     exp=429      got=429  {"error":{"code":"RATE_LIMITED","message":"Too many incorrect attempts. Request a new code.","requestId":"32b3bb68-5e90-47f8-a23c-e5a6914971ed"}}
+PASS otp verify after lockout                      exp=400      got=400  {"error":{"code":"OTP_EXPIRED","message":"Verification code has expired or was not requested","requestId":"68676aed-c813-4bdf-a89c-d1d89caf51e4"}}
+PASS me (new student)                              exp=200      got=200  {"id":"cmvagy6f20000ssb1gn7iqjdr","cognitoSub":"qa-stu-1792124992","email":"qa-stu-1792124992@janus.test","phoneE164":null,"handle":"qastudent","displayName":"Q
+PASS profile self-assign admin                     exp=403      got=403  {"error":{"code":"FORBIDDEN","message":"Cannot self-assign admin","requestId":"ab769484-9a31-463e-b16d-02922b740318"}}
+PASS profile bad field                             exp=400      got=400  {"error":{"code":"VALIDATION_ERROR","message":"property evil should not exist","requestId":"73604c87-0499-466b-bdd8-20962540a949"}}
+PASS profile student                               exp=200 201  got=201  {"id":"cmvagy6f20000ssb1gn7iqjdr","cognitoSub":"qa-stu-1792124992","email":"qa-stu-1792124992@janus.test","phoneE164":null,"handle":"qastu1792124992","displayNa
+PASS profile recruiter                             exp=200 201  got=201  {"id":"cmvagy6kg0003ssb1ztvb8bq7","cognitoSub":"qa-rec-1792124992","email":"qa-rec-1792124992@janus.test","phoneE164":null,"handle":"qarec1792124992","displayNa
+FAIL student->recruiter role switch                exp=403      got=409  {"error":{"code":"ROLE_LOCKED","message":"Role cannot be changed after onboarding","requestId":"9e5d0ad3-e46c-4c56-ad87-6f8b5b52250f"}}
+PASS feed                                          exp=200      got=200  {"items":[{"id":"cmty78p7a000qss96b8t9wyge","caption":"Testing sub-50ms latency finger articulation using surface electromyography sensors and custom harmonic m
+PASS feed limit=1000                               exp=200 400  got=200  {"items":[{"id":"cmty78p7a000qss96b8t9wyge","caption":"Testing sub-50ms latency finger articulation using surface electromyography sensors and custom harmonic m
+PASS feed university filter                        exp=200      got=200  {"items":[{"id":"cmty78p7a000qss96b8t9wyge","caption":"Testing sub-50ms latency finger articulation using surface electromyography sensors and custom harmonic m
+PASS video get                                     exp=200      got=200  {"id":"cmty78p7a000qss96b8t9wyge","caption":"Testing sub-50ms latency finger articulation using surface electromyography sensors and custom harmonic micro-gearb
+PASS video get unknown                             exp=404 400  got=404  {"error":{"code":"NOT_FOUND","message":"Not found","requestId":"a02392b4-c1d2-4a15-8168-f92a7f84126f"}}
+FAIL like                                          exp=200 201 204 got=400  {"error":{"code":"VALIDATION_ERROR","message":"Body cannot be empty when content-type is set to 'application/json'","requestId":"6b1cf612-ac24-4b08-a522-20681f6
+FAIL like again (idempotent)                       exp=200 201 204 409 got=400  {"error":{"code":"VALIDATION_ERROR","message":"Body cannot be empty when content-type is set to 'application/json'","requestId":"c73479d1-e37d-4fbd-9c8e-f8c58c2
+PASS unlike                                        exp=200 204  got=200  {"liked":false}
+PASS like unknown video                            exp=404 400  got=400  {"error":{"code":"VALIDATION_ERROR","message":"Body cannot be empty when content-type is set to 'application/json'","requestId":"d6ce3142-d9b6-4dcd-a7cb-9ac6a55
+PASS comment                                       exp=200 201  got=201  {"id":"cmvagy70a0008ssb1ur5optkw","videoId":"cmty78p7a000qss96b8t9wyge","body":"Great work from QA","createdAt":"2026-10-16T04:29:53.531Z","user":{"id":"cmvagy6
+PASS comment empty                                 exp=400      got=400  {"error":{"code":"COMMENT_EMPTY","message":"Comment cannot be empty","requestId":"7cda017b-6b2e-48ae-85e8-52020c15b109"}}
+PASS comment missing body                          exp=400      got=400  {"error":{"code":"VALIDATION_ERROR","message":"body must be shorter than or equal to 500 characters, body must be a string","requestId":"d0d297fb-b7d4-4fde-a38d
+PASS comments list                                 exp=200      got=200  {"items":[{"id":"cmvagy70a0008ssb1ur5optkw","videoId":"cmty78p7a000qss96b8t9wyge","body":"Great work from QA","createdAt":"2026-10-16T04:29:53.531Z","user":{"id
+FAIL bookmark                                      exp=200 201 204 got=400  {"error":{"code":"VALIDATION_ERROR","message":"Body cannot be empty when content-type is set to 'application/json'","requestId":"4dc44fd7-0490-4136-a796-af560d0
+PASS my bookmarks                                  exp=200      got=200  {"items":[]}
+PASS unbookmark                                    exp=200 204  got=200  {"saved":false}
+PASS impressions                                   exp=200 201 204 got=201  {"ok":true}
+PASS impressions bad                               exp=400      got=400  {"error":{"code":"VALIDATION_ERROR","message":"videoIds must contain no more than 20 elements, videoIds must be an array","requestId":"34ccaedd-55b0-4697-9047-d
+PASS user card                                     exp=200      got=200  {"id":"cmty78p78000mss96jwto5snl","handle":"elena.bionics","displayName":"Elena Rostova","avatarKey":null,"bannerKey":null,"role":"STUDENT","student":{"universi
+PASS user videos                                   exp=200      got=200  {"items":[{"id":"cmty78p7a000qss96b8t9wyge","caption":"Testing sub-50ms latency finger articulation using surface electromyography sensors and custom harmonic m
+PASS user unknown                                  exp=404 400  got=404  {"error":{"code":"NOT_FOUND","message":"Not found","requestId":"af1f6232-70af-4900-8cfd-0149c8d7b8b6"}}
+FAIL follow                                        exp=200 201 204 got=400  {"error":{"code":"VALIDATION_ERROR","message":"Body cannot be empty when content-type is set to 'application/json'","requestId":"4ef0c8f5-7314-4b22-b6d3-f20df07
+PASS follow self                                   exp=400 409 403 got=400  {"error":{"code":"VALIDATION_ERROR","message":"Body cannot be empty when content-type is set to 'application/json'","requestId":"737ebbde-7283-4375-a15d-7b40584
+PASS unfollow                                      exp=200 204  got=200  {"following":false}
+PASS billing plan recruiter                        exp=200      got=200  {"plan":"FREE_PILOT","monetization":"stub","organization":{"id":"cmvagy6kk0004ssb1x9c40n6p","name":"QA Corp","slug":"qacorp1792124992","plan":"FREE_PILOT","stat
+PASS billing plan student                          exp=200 403  got=200  {"plan":"FREE_PILOT","monetization":"stub","organization":null}
+PASS org (student forbidden)                       exp=403      got=403  {"error":{"code":"FORBIDDEN","message":"Insufficient role","requestId":"c773bf16-cb3e-4be5-9ddc-77045f639754"}}
+PASS nda template                                  exp=200      got=200  {"id":"cmtck2jl10000sszmjd7cqj4o","version":1,"title":"JANUS Mutual Non-Disclosure Agreement v1","body":"JANUS MUTUAL NON-DISCLOSURE AGREEMENT (PILOT)\n\nThis a
+PASS vault before NDA                              exp=403      got=403  {"error":{"code":"VAULT_DENIED","message":"No active NDA grant for this asset","requestId":"1d3c78ed-49a6-4abd-b841-6549d2a9607a"}}
+PASS vault as student (wrong role)                 exp=403      got=403  {"error":{"code":"FORBIDDEN","message":"Insufficient role","requestId":"4d95e2aa-8487-4653-ac89-01315cd9f27f"}}
+PASS upload bad kind                               exp=400      got=400  {"error":{"code":"VALIDATION_ERROR","message":"kind must be one of the following values: FEED_VIDEO, VAULT_FILE, VAULT_VIDEO, AVATAR, BANNER, contentType must b
+FAIL upload feed video ticket                      exp=200 201  got=400  {"error":{"code":"VALIDATION_ERROR","message":"property bytes should not exist, property filename should not exist, property title should not exist, byteSize mu
+PASS upload recruiter (wrong role?)                exp=403 400  got=400  {"error":{"code":"VALIDATION_ERROR","message":"property bytes should not exist, property filename should not exist, byteSize must not be greater than 524288000,
+PASS upload too large                              exp=400      got=400  {"error":{"code":"VALIDATION_ERROR","message":"property bytes should not exist, property filename should not exist, byteSize must not be greater than 524288000,
+FAIL nda request (recruiter->seed author)          exp=200 201  got=400  {"error":{"code":"VALIDATION_ERROR","message":"property message should not exist","requestId":"93aba682-12b8-46bb-a39d-070691f65a98"}}
+PASS nda request bad                               exp=400      got=400  {"error":{"code":"VALIDATION_ERROR","message":"studentId must be a string","requestId":"d926fbe0-4d10-4a7b-bd7f-d4a6b450b896"}}
+PASS nda outbound                                  exp=200      got=200  []
+PASS nda inbox student                             exp=200      got=200  []
+PASS nda decide by recruiter (wrong role)          exp=403      got=403  {"error":{"code":"FORBIDDEN","message":"Insufficient role","requestId":"fbd1124f-14f8-46af-915c-c70e5d71e428"}}
+PASS nda decide by other student                   exp=403 404  got=404  {"error":{"code":"NOT_FOUND","message":"Not found","requestId":"ae9932f6-64bd-44f4-b17b-80fe998831ec"}}
+PASS nda sign before accept                        exp=400 409 403 got=400  {"error":{"code":"VALIDATION_ERROR","message":"property signerName should not exist, property agree should not exist, typedName must be shorter than or equal to
+PASS admin videos as recruiter                     exp=403      got=403  {"error":{"code":"FORBIDDEN","message":"Insufficient role","requestId":"719fa3c0-54c0-4711-8cce-aacb9baa4a6f"}}
+FAIL admin videos                                  exp=200      got=403  {"error":{"code":"FORBIDDEN","message":"Insufficient role","requestId":"4f8c833d-0b26-4450-b9c9-ea454d059fe9"}}
+FAIL admin users                                   exp=200      got=403  {"error":{"code":"FORBIDDEN","message":"Insufficient role","requestId":"37b56b84-a879-4869-84c9-12e370cab31e"}}
+FAIL admin audit                                   exp=200      got=403  {"error":{"code":"FORBIDDEN","message":"Insufficient role","requestId":"0a880ab3-d1ef-4467-b5b0-c3d8e91f306c"}}
+FAIL admin patch bad status                        exp=400      got=403  {"error":{"code":"FORBIDDEN","message":"Insufficient role","requestId":"9fc4fbe0-0626-49fe-a3c1-075762d1bccc"}}
+PASS delete video wrong owner                      exp=403 404  got=404  {"error":{"code":"NOT_FOUND","message":"Not found","requestId":"704271f5-9fbf-4520-bd80-ba704744f6e8"}}
+NID= AUTH=cmty78p78000mss96jwto5snl VID=cmty78p7a000qss96b8t9wyge SID=cmvagy6f20000ssb1gn7iqjdr S=1792124992

@@ -1,0 +1,4 @@
+module.exports = {
+  displayName: "@janus/api",
+  testMatch: ["<rootDir>/test/**/*.e2e-spec.ts"],
+};

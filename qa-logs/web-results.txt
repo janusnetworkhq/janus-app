@@ -1,0 +1,12 @@
+anon       /                                      307 http://localhost:3001/login digest
+anon       /login                                 200  
+anon       /restricted                            200  
+anon       /onboarding                            307 http://localhost:3001/login?next=%2Fonboarding 
+anon       /feed                                  307 http://localhost:3001/login 
+anon       /requests                              307 http://localhost:3001/login?next=%2Frequests 
+recruiter  /feed                                  000  
+recruiter  /requests                              000  
+recruiter  /talent/cmvah3aoe0000ssx8wa8med4d      000  
+recruiter  /nda/cmvah3egr000vssx8vv7oio6f         000  
+recruiter  /vault/cmvah3aoe0000ssx8wa8med4d       000  
+recruiter  /admin/videos                          000  
