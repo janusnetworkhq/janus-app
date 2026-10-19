@@ -1,4 +1,4 @@
-export type AuthMode = "local" | "cognito";
+export type AuthMode = "local" | "cognito" | "otp";
 export type MediaDriver = "s3" | "noop" | "cloudinary";
 export type TranscodeDriver = "mock" | "ffmpeg";
 export type ModerationDriver = "noop" | "rekognition" | "manual";
@@ -111,11 +111,15 @@ export function assertProdConfig(): void {
   if (!process.env.LOCAL_JWT_SECRET || appConfig.localJwtSecret === "janus-local-dev-only-change-me" || appConfig.localJwtSecret.length < 32) {
     throw new Error("LOCAL_JWT_SECRET must be set to a strong (>=32 char) non-default value in production");
   }
-  if (appConfig.authMode !== "cognito") {
-    throw new Error("AUTH_MODE must be cognito in production");
+  if (appConfig.authMode !== "cognito" && appConfig.authMode !== "otp") {
+    throw new Error("AUTH_MODE must be cognito or otp in production (local enables dev tokens)");
   }
-  if (!appConfig.cognitoUserPoolId || !appConfig.cognitoClientId) {
+  if (appConfig.authMode === "cognito" && (!appConfig.cognitoUserPoolId || !appConfig.cognitoClientId)) {
     throw new Error("Cognito pool/client required in production");
+  }
+  if (appConfig.authMode === "otp" && !appConfig.resendApiKey) {
+    // OTP codes are delivered by email; without Resend they would only be logged.
+    throw new Error("RESEND_API_KEY required in production when AUTH_MODE=otp");
   }
   if (!appConfig.databaseUrl) {
     throw new Error("DATABASE_URL required");

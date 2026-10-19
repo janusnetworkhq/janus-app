@@ -26,7 +26,7 @@ export class JwtVerifier {
     } catch {
       throw ApiError.unauthorized("Malformed token");
     }
-    if (alg === "HS256" && appConfig.authMode === "cognito") {
+    if (alg === "HS256" && appConfig.authMode !== "local") {
       const { payload } = await jwtVerify(token, secretKey(), {
         issuer: SESSION_ISSUER,
         audience: "janus-api",
@@ -91,7 +91,7 @@ export class JwtVerifier {
   }
 
   /**
-   * Session token for first-party email-OTP sign-in. Valid in local and cognito modes:
+   * Session token for first-party email-OTP sign-in. Valid in local, cognito and otp modes:
    * the OTP proves control of the email, and the user row is linked by email.
    */
   async signSession(claims: { sub: string; email: string; name?: string }): Promise<string> {

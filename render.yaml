@@ -22,7 +22,7 @@ services:
       - key: REDIS_URL
         sync: false
       - key: AUTH_MODE
-        value: cognito
+        value: otp
       - key: AWS_REGION
         value: ap-south-1
       - key: MEDIA_DRIVER
@@ -32,10 +32,6 @@ services:
       - key: CORS_ORIGINS
         sync: false
       - key: LOCAL_JWT_SECRET
-        sync: false
-      - key: COGNITO_USER_POOL_ID
-        sync: false
-      - key: COGNITO_CLIENT_ID
         sync: false
       - key: CLOUDINARY_CLOUD_NAME
         sync: false
@@ -79,7 +75,7 @@ services:
       - key: REDIS_URL
         sync: false
       - key: AUTH_MODE
-        value: cognito
+        value: otp
       - key: AWS_REGION
         value: ap-south-1
       - key: MEDIA_DRIVER
@@ -89,10 +85,6 @@ services:
       - key: CORS_ORIGINS
         sync: false
       - key: LOCAL_JWT_SECRET
-        sync: false
-      - key: COGNITO_USER_POOL_ID
-        sync: false
-      - key: COGNITO_CLIENT_ID
         sync: false
       - key: CLOUDINARY_CLOUD_NAME
         sync: false

@@ -167,7 +167,7 @@ export class AuthController {
     // a first-party sub. Works in both auth modes because the API issues the session token.
     const sub = existing
       ? existing.cognitoSub
-      : appConfig.authMode === "cognito"
+      : appConfig.authMode !== "local"
         ? `otp:email:${email}`
         : `local:email:${email}`;
     const displayName = body.name?.trim() || stored.name || existing?.displayName || undefined;
