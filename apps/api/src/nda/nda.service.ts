@@ -219,14 +219,27 @@ export class NdaService {
               userAgent: (req.userAgent || "unknown").slice(0, 512),
             },
           });
-          await tx.accessGrant.create({
-            data: {
-              agreementId: created.id,
-              recruiterId: recruiter.id,
-              studentId: row.studentId,
-              expiresAt,
-            },
+          // One active vault-wide grant per (recruiter, student) pair is enforced by a
+          // partial unique index. Re-signing (e.g. after expiry) must refresh the
+          // existing grant instead of inserting a second one (P2002 otherwise).
+          const existingGrant = await tx.accessGrant.findFirst({
+            where: { recruiterId: recruiter.id, studentId: row.studentId, vaultAssetId: null, revokedAt: null },
           });
+          if (existingGrant) {
+            await tx.accessGrant.update({
+              where: { id: existingGrant.id },
+              data: { agreementId: created.id, expiresAt, expiryNotifiedAt: null },
+            });
+          } else {
+            await tx.accessGrant.create({
+              data: {
+                agreementId: created.id,
+                recruiterId: recruiter.id,
+                studentId: row.studentId,
+                expiresAt,
+              },
+            });
+          }
           return created;
         });
 

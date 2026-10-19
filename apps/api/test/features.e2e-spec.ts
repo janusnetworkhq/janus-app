@@ -157,6 +157,14 @@ describe("Round 3 features", () => {
     const PNG_1PX = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8Xw8AAwMCAO+ip1sAAAAASUVORK5CYII=";
     const signed = await inject({ method: "POST", url: `/v1/nda/requests/${ndaId}/sign`, token: recruiterToken, payload: { typedName: "Feature Recruiter", acceptedHash: templateHash, signaturePngBase64: PNG_1PX } });
     expect(signed.statusCode).toBe(201);
+    // Re-signing for the same pair must refresh the single active grant, not duplicate it.
+    const req2 = await inject({ method: "POST", url: "/v1/nda/requests", token: recruiterToken, payload: { studentId, videoId, reason: "second look" } });
+    const ndaId2 = req2.json().id as string;
+    await inject({ method: "POST", url: `/v1/nda/requests/${ndaId2}/decide`, token: studentToken, payload: { accept: true } });
+    const signed2 = await inject({ method: "POST", url: `/v1/nda/requests/${ndaId2}/sign`, token: recruiterToken, payload: { typedName: "Feature Recruiter", acceptedHash: templateHash } });
+    expect(signed2.statusCode).toBe(201);
+    expect(await prisma.accessGrant.count({ where: { recruiterId, studentId, vaultAssetId: null, revokedAt: null } })).toBe(1);
+
     const agreement = await prisma.ndaAgreement.findFirstOrThrow({ where: { requestId: ndaId } });
     const { createHash } = await import("node:crypto");
     expect(agreement.signatureS3Key).toBe(`legal/signatures/${ndaId}.png`);
