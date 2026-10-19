@@ -1,0 +1,23 @@
+PASS anon /feed redirects to login https://janus-three-nu.vercel.app/login
+PASS wrong OTP shows friendly error 
+PASS recruiter OTP login lands on feed https://janus-three-nu.vercel.app/feed
+FAIL feed shows QA sample video 
+PASS feed like click 
+PASS talent profile loads 
+PASS vault locked before NDA 
+PASS NDA request created, waiting student cmvf99f77000kh901hft52h1i
+PASS student inbox has NDA request status=200
+PASS student accepts NDA via API status=201
+PASS nda sign form after accept 
+FAIL signing redirects to unlocked vault list https://janus-three-nu.vercel.app/vault/cmvf8mmpm0004fx0121e39y2z
+PASS vault viewer watermark tiles present tiles=10
+PASS vault viewer has no download link count=0
+PASS notifications page loads has-unread-marker
+PASS mark all read 
+PASS logout returns to login 
+PASS admin OTP login lands on feed https://janus-three-nu.vercel.app/feed
+PASS moderation queue shows QA video after PENDING set 
+FAIL approve clears queue row 
+PASS admin hide sets HIDDEN 
+PASS admin restore sets READY (cleanup) 
+PASS verify without prior send -> OTP_EXPIRED (expired/no-code path) status=400

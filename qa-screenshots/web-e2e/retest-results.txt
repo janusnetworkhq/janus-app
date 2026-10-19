@@ -1,0 +1,5 @@
+PASS feed shows QA sample video (waited) 
+PASS vault list shows qa-prototype.pdf (waited) 
+PASS approve clears queue row (waited, router.refresh) 
+PASS hide updates list in place 
+PASS restore updates list in place (final READY) 
