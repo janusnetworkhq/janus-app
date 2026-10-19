@@ -81,6 +81,14 @@ export const appConfig = {
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean),
   sessionTokenTtl: process.env.SESSION_TOKEN_TTL ?? "24h",
+  /**
+   * TEST ONLY: explicit allowlist for the fixed OTP (see TEST_OTP_FIXED_CODE).
+   * Effective only for @janus.test addresses - see isTestOtpAccount().
+   */
+  testOtpEmails: (process.env.TEST_OTP_EMAILS ?? "")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean),
   cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME ?? cloudinaryUrlPart("name"),
   cloudinaryApiKey: process.env.CLOUDINARY_API_KEY ?? cloudinaryUrlPart("key"),
   cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET ?? cloudinaryUrlPart("secret"),
@@ -107,6 +115,16 @@ export const appConfig = {
 };
 
 export function assertProdConfig(): void {
+  const testOtp = effectiveTestOtpEmails();
+  if (testOtp.length > 0) {
+    console.warn(
+      `[config] TEST OTP ENABLED for ${testOtp.join(", ")}: fixed code accepted for these @janus.test test accounts only. Remove TEST_OTP_EMAILS to disable.`,
+    );
+  }
+  const ignored = appConfig.testOtpEmails.filter((e) => !e.endsWith("@janus.test"));
+  if (ignored.length > 0) {
+    console.warn(`[config] TEST_OTP_EMAILS entries ignored (not @janus.test): ${ignored.join(", ")}`);
+  }
   if (!appConfig.isProd) return;
   if (!process.env.LOCAL_JWT_SECRET || appConfig.localJwtSecret === "janus-local-dev-only-change-me" || appConfig.localJwtSecret.length < 32) {
     throw new Error("LOCAL_JWT_SECRET must be set to a strong (>=32 char) non-default value in production");
@@ -143,4 +161,22 @@ export function assertProdConfig(): void {
       throw new Error("TRANSCODE_DRIVER=mock produces unplayable media; use ffmpeg in production");
     }
   }
+}
+
+/** Fixed code accepted ONLY for allowlisted @janus.test test accounts. Never a secret. */
+export const TEST_OTP_FIXED_CODE = "123456";
+
+/**
+ * A test account must satisfy BOTH conditions:
+ *  1. its email is listed in TEST_OTP_EMAILS, and
+ *  2. it ends with @janus.test (hard guard - a stray env entry for a real domain does nothing).
+ */
+export function isTestOtpAccount(email: string): boolean {
+  const normalized = email.trim().toLowerCase();
+  if (!normalized.endsWith("@janus.test")) return false;
+  return appConfig.testOtpEmails.includes(normalized);
+}
+
+export function effectiveTestOtpEmails(): string[] {
+  return appConfig.testOtpEmails.filter((e) => e.endsWith("@janus.test"));
 }

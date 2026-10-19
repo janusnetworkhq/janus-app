@@ -1,9 +1,10 @@
 import { randomInt, timingSafeEqual } from "node:crypto";
 import { Body, Controller, HttpCode, Post } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
+import { Logger } from "@nestjs/common";
 import { IsEmail, IsNotEmpty, IsOptional, IsString, Length } from "class-validator";
 import { ApiError } from "../common/api-error";
-import { appConfig } from "../common/config";
+import { appConfig, isTestOtpAccount, TEST_OTP_FIXED_CODE } from "../common/config";
 import { EmailService } from "../common/email.service";
 import { PrismaService } from "../common/prisma.service";
 import { RedisService } from "../common/redis.service";
@@ -63,6 +64,8 @@ interface StoredOtpData {
 @ApiTags("auth")
 @Controller("v1/auth")
 export class AuthController {
+  private readonly logger = new Logger(AuthController.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
@@ -145,7 +148,15 @@ export class AuthController {
     }
 
     const stored = JSON.parse(raw) as StoredOtpData;
-    if (!safeEqual(stored.code, body.code.trim())) {
+    const submittedCode = body.code.trim();
+    // Test accounts (allowlisted @janus.test only): the fixed test code is accepted in
+    // addition to the real code. Anything else falls through to the normal comparison,
+    // so wrong codes - including for test accounts - still count toward the lockout.
+    const testCodeAccepted = isTestOtpAccount(email) && safeEqual(submittedCode, TEST_OTP_FIXED_CODE);
+    if (testCodeAccepted) {
+      this.logger.warn(`Test OTP accepted for ${email} (TEST_OTP_EMAILS allowlist)`);
+    }
+    if (!testCodeAccepted && !safeEqual(stored.code, submittedCode)) {
       const attempts = await this.redis.incr(`auth:otp:attempts:${email}`, OTP_TTL_SEC);
       if (attempts >= OTP_MAX_ATTEMPTS) {
         await this.redis.del(cacheKey, `auth:otp:attempts:${email}`);

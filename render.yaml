@@ -27,6 +27,9 @@ services:
         sync: false
       - key: AUTH_MODE
         value: otp
+      # TEST ONLY: fixed OTP 123456 for these @janus.test QA accounts (see docs). Remove to disable.
+      - key: TEST_OTP_EMAILS
+        value: qa.recruiter@janus.test,qa.student@janus.test,qa.admin@janus.test
       - key: AWS_REGION
         value: ap-south-1
       - key: MEDIA_DRIVER

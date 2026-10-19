@@ -1,11 +1,36 @@
 {
-  "note": "Labelled QA test data in production DB (created 2026-10-19). OTP-only login; codes are emailed only after RESEND_API_KEY is set - until then fetch from Render logs: render logs --resources srv-dbb0m1u7bikc73b9rfv0 | grep 'Verification Code for <email>'",
+  "note": "Labelled QA test data in production DB. Login: enter the email, request a code, then use fixed test code 123456 (TEST_OTP_EMAILS allowlist, @janus.test only; real codes from Render logs also work). Disable by removing TEST_OTP_EMAILS in Render + redeploy.",
   "accounts": [
-    { "email": "qa.recruiter@janus.test", "name": "Priya Sharma", "role": "RECRUITER", "org": "Acme Talent QA", "id": "cmvf8lzyb0000fx01a62kbugk" },
-    { "email": "qa.student@janus.test", "name": "Arjun Mehta", "role": "STUDENT", "university": "NIT Karnataka", "id": "cmvf8mmpm0004fx0121e39y2z" },
-    { "email": "qa.admin@janus.test", "name": "Janus QA Admin", "role": "PLATFORM_ADMIN", "id": "cmvf8n0yk0007fx01877dab9q" }
+    {
+      "email": "qa.recruiter@janus.test",
+      "name": "Priya Sharma",
+      "role": "RECRUITER",
+      "org": "Acme Talent QA",
+      "id": "cmvf8lzyb0000fx01a62kbugk"
+    },
+    {
+      "email": "qa.student@janus.test",
+      "name": "Arjun Mehta",
+      "role": "STUDENT",
+      "university": "NIT Karnataka",
+      "id": "cmvf8mmpm0004fx0121e39y2z"
+    },
+    {
+      "email": "qa.admin@janus.test",
+      "name": "Janus QA Admin",
+      "role": "PLATFORM_ADMIN",
+      "id": "cmvf8n0yk0007fx01877dab9q"
+    }
   ],
-  "video": { "id": "cmvf90d350003h901k3wyfnqy", "caption": "QA sample: Smart irrigation robot demo (test data)", "status": "READY", "moderationStatus": "CLEAR" },
-  "vaultAsset": { "id": "cmvf90p2v000ah901o3sbgz1q", "originalName": "qa-prototype.pdf" },
+  "video": {
+    "id": "cmvf90d350003h901k3wyfnqy",
+    "caption": "QA sample: Smart irrigation robot demo (test data)",
+    "status": "READY",
+    "moderationStatus": "CLEAR"
+  },
+  "vaultAsset": {
+    "id": "cmvf90p2v000ah901o3sbgz1q",
+    "originalName": "qa-prototype.pdf"
+  },
   "ndaRequestFromE2E": "cmvf99f77000kh901hft52h1i (signed in E2E)"
 }

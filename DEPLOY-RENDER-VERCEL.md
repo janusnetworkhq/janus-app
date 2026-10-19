@@ -92,3 +92,17 @@ Team question: the CLI on this Mac is logged in as `janusnetworkhq-9903`; you me
 | Email OTP | Resend free (`AUTH_MODE=otp`) | ~100 emails/day free; **optional for now** — without it OTP codes are written to the API server log only (never returned by the API); add it for real email |
 
 Total: **$0/month** within those caps. Expect cold-start latency and delayed notifications after idle — acceptable for launch validation, not for SLA traffic. Upgrade path: switch to `render-paid.yaml` (Starter API + Standard worker) when billing is added.
+
+## Test accounts & fixed OTP (TEST_OTP_EMAILS)
+
+QA accounts `qa.recruiter@janus.test`, `qa.student@janus.test`, `qa.admin@janus.test`
+accept the fixed code **123456** in addition to the real emailed/logged code. Scope is
+hard-limited in code: the email must be listed in `TEST_OTP_EMAILS` **and** end with
+`@janus.test` (other domains are ignored even if listed). Wrong codes still count toward
+the 5-attempt lockout, and a code must have been requested first (send before verify).
+Startup logs a warning naming the enabled test accounts whenever the list is non-empty.
+
+Disable: remove/clear `TEST_OTP_EMAILS` on the Render service (dashboard > janus-api >
+Environment) and redeploy. No other account can use 123456 — it fails as an ordinary
+wrong code. This exists only because Resend email delivery is not set up yet; remove it
+once real email works.
