@@ -22,3 +22,7 @@
 - 09:52  Interrupted again. State: main pushed to f0ec5cf; mobile prod-otp-config at 3a0ed43 (clean); uncommitted in main: this log, screenshots 36/37-fixed/38.
 - NEXT: confirm viewer, commit screenshots+log, APK (EAS not logged in; no SDK/JDK17), final report.
 - 09:55  Found root node_modules deleted after reboot (not by this agent; 13 GB freed). Running pnpm install --frozen-lockfile.
+- 10:0x  Viewer now 401 'deny or ACL failure' (path fixed). Switched raw vault files to private_download_url. Tests 41/41 (after pnpm reinstall + prisma generate).
+- 10:20  Shut down simulator + Metro (memory).
+- 10:01  Render live on 4ce9c60 (dep-dbberp7f3r2c738l2ld0, manual trigger; auto-deploy does not fire). Protected viewer PASS: PDF renders inline with watermark (37c-asset-viewer-PASS). The second file showed the old URL until the 10-min Redis playback cache expired (37a).
+- 10:21  /ready 200 {redis, postgres ok}.
