@@ -34,3 +34,4 @@
 - 10:40  Build attempt 3 submitted: d9eeb888-d87c-4420-8534-ae7f17776544 (keystore generated and stored by EAS, upload 1.7 MB). https://expo.dev/accounts/gokula/projects/janus/builds/d9eeb888-d87c-4420-8534-ae7f17776544
 - 10:5x  Build d9eeb888 still IN_PROGRESS (~15 min).
 - 11:0x  Build d9eeb888 FINISHED. APK: https://expo.dev/artifacts/eas/UHsXjoLe7c20CQYaXQk51QvNCtFwy3Nt10Pq69Dy-wY.apk (v1.0.0, versionCode 1). Downloading to qa-builds/janus-preview.apk (gitignored).
+- 11:0x  APK downloaded: qa-builds/janus-preview.apk (105 MB, zip OK, bundle points at the live API). Done.
