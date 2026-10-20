@@ -107,6 +107,16 @@ export class StorageService {
   }
 
   cloudinarySignedUrl(publicId: string, resourceType: CloudinaryResourceType, ttlSec: number): string {
+    if (resourceType === "raw") {
+      // Authenticated raw files (PDF/ZIP/CAD) are served through the API-signed download
+      // endpoint: it enforces expires_at (delivery-URL signatures never expire) and is not
+      // subject to the account's PDF/ZIP delivery ACL (which returned 401 to the viewer).
+      return cloudinary.utils.private_download_url(publicId, "", {
+        resource_type: "raw",
+        type: "authenticated",
+        expires_at: Math.floor(Date.now() / 1000) + ttlSec,
+      });
+    }
     return cloudinary.url(publicId, {
       resource_type: resourceType,
       type: "authenticated",
