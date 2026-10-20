@@ -26,3 +26,4 @@
 - 10:20  Shut down simulator + Metro (memory).
 - 10:01  Render live on 4ce9c60 (dep-dbberp7f3r2c738l2ld0, manual trigger; auto-deploy does not fire). Protected viewer PASS: PDF renders inline with watermark (37c-asset-viewer-PASS). The second file showed the old URL until the 10-min Redis playback cache expired (37a).
 - 10:21  /ready 200 {redis, postgres ok}.
+- 10:23  Pushed 8d78523. npx eas-cli whoami: Not logged in, so the APK is blocked (no local SDK install, per instruction). Sim + Metro closed.
