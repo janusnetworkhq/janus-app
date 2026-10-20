@@ -113,7 +113,8 @@ export class StorageService {
       sign_url: true,
       secure: true,
       expires_at: Math.floor(Date.now() / 1000) + ttlSec,
-      ...(resourceType === "raw" ? { format: publicId.split(".").pop() } : {}),
+      // Raw public_ids already carry their extension (e.g. "x.pdf"); passing `format` too
+      // would yield "x.pdf.pdf" and a Cloudinary 404.
     });
   }
 
