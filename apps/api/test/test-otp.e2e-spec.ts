@@ -90,4 +90,24 @@ describe("Test OTP allowlist (TEST_OTP_EMAILS)", () => {
     expect(res.statusCode).toBe(200);
     expect(JSON.parse(res.body).accessToken).toBeDefined();
   });
+  it("built-in qa.* pattern: a seeded account (qa.student07) logs in with 123456; request-first still enforced", async () => {
+    const S7 = "qa.student07@janus.test";
+    await redis.del(`auth:otp:${S7}`, `auth:otp:attempts:${S7}`);
+    const notRequested = await verify(S7, "123456");
+    expect(notRequested.statusCode).toBe(400);
+    expect(JSON.parse(notRequested.body).error.code).toBe("OTP_EXPIRED");
+    await plant(S7);
+    const ok = await verify(S7, "123456");
+    expect(ok.statusCode).toBe(200);
+    expect(JSON.parse(ok.body).accessToken).toBeDefined();
+  });
+
+  it("123456 never works for a real domain even with a pending code", async () => {
+    const REAL = "qa.student07@example.com";
+    await plant(REAL);
+    const res = await verify(REAL, "123456");
+    expect(res.statusCode).toBe(400);
+    expect(JSON.parse(res.body).error.code).toBe("INVALID_OTP");
+  });
 });
+

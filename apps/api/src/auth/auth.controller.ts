@@ -154,7 +154,7 @@ export class AuthController {
     // so wrong codes - including for test accounts - still count toward the lockout.
     const testCodeAccepted = isTestOtpAccount(email) && safeEqual(submittedCode, TEST_OTP_FIXED_CODE);
     if (testCodeAccepted) {
-      this.logger.warn(`Test OTP accepted for ${email} (TEST_OTP_EMAILS allowlist)`);
+      this.logger.warn(`Test OTP accepted for ${email} (test-OTP @janus.test account)`);
     }
     if (!testCodeAccepted && !safeEqual(stored.code, submittedCode)) {
       const attempts = await this.redis.incr(`auth:otp:attempts:${email}`, OTP_TTL_SEC);

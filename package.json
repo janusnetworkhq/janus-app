@@ -31,7 +31,8 @@
     "infra:synth": "pnpm --filter @janus/infra synth",
     "k6:smoke": "bash ops/k6/run.sh smoke",
     "k6:slo": "bash ops/k6/run.sh slo",
-    "k6:feed": "bash ops/k6/run.sh feed"
+    "k6:feed": "bash ops/k6/run.sh feed",
+    "seed:test-students": "tsx prisma/seed-test-students.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

@@ -118,12 +118,12 @@ export function assertProdConfig(): void {
   const testOtp = effectiveTestOtpEmails();
   if (testOtp.length > 0) {
     console.warn(
-      `[config] TEST OTP ENABLED for ${testOtp.join(", ")}: fixed code accepted for these @janus.test test accounts only. Remove TEST_OTP_EMAILS to disable.`,
+      `[config] TEST OTP ENABLED for ${testOtp.join(", ")}: fixed code accepted for matching @janus.test accounts only. Unset TEST_OTP_EMAILS to disable.`,
     );
   }
-  const ignored = appConfig.testOtpEmails.filter((e) => !e.endsWith("@janus.test"));
+  const ignored = appConfig.testOtpEmails.filter((e) => compileTestOtpEntry(e) === null);
   if (ignored.length > 0) {
-    console.warn(`[config] TEST_OTP_EMAILS entries ignored (not @janus.test): ${ignored.join(", ")}`);
+    console.warn(`[config] TEST_OTP_EMAILS entries ignored (not a valid @janus.test address/pattern): ${ignored.join(", ")}`);
   }
   if (!appConfig.isProd) return;
   if (!process.env.LOCAL_JWT_SECRET || appConfig.localJwtSecret === "janus-local-dev-only-change-me" || appConfig.localJwtSecret.length < 32) {
@@ -163,20 +163,65 @@ export function assertProdConfig(): void {
   }
 }
 
-/** Fixed code accepted ONLY for allowlisted @janus.test test accounts. Never a secret. */
+/** Fixed code accepted ONLY for test-OTP @janus.test accounts. Never a secret. */
 export const TEST_OTP_FIXED_CODE = "123456";
 
+/** Hard guard: the fixed code can only ever apply to this domain, whatever the env says. */
+export const TEST_OTP_DOMAIN = "@janus.test";
+
 /**
- * A test account must satisfy BOTH conditions:
- *  1. its email is listed in TEST_OTP_EMAILS, and
- *  2. it ends with @janus.test (hard guard - a stray env entry for a real domain does nothing).
+ * Built-in patterns, active ONLY while test OTP is enabled (TEST_OTP_EMAILS non-empty).
+ * Covers qa.student / qa.recruiter / qa.admin and the seeded qa.student01..10 accounts
+ * without growing the env list. Still subject to the @janus.test guard.
+ */
+export const DEFAULT_TEST_OTP_PATTERNS: readonly string[] = ["qa.*@janus.test"];
+
+const LOCAL_PART = /^[a-z0-9._+-]+$/;
+const PATTERN_LOCAL_PART = /^[a-z0-9._+*-]+$/;
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * Compiles one allowlist entry: an exact address ("qa.admin@janus.test") or a glob whose
+ * "*" may appear only in the local part ("qa.*@janus.test"); "*" never matches "@".
+ * Returns null for anything outside @janus.test or with an invalid local part.
+ */
+export function compileTestOtpEntry(entry: string): RegExp | null {
+  const e = entry.trim().toLowerCase();
+  if (!e.endsWith(TEST_OTP_DOMAIN)) return null;
+  const local = e.slice(0, -TEST_OTP_DOMAIN.length);
+  if (!local || !PATTERN_LOCAL_PART.test(local)) return null;
+  const body = local.split("*").map(escapeRe).join("[a-z0-9._+-]*");
+  return new RegExp(`^${body}${escapeRe(TEST_OTP_DOMAIN)}$`);
+}
+
+let matcherCache: { key: string; matchers: RegExp[] } | null = null;
+function testOtpMatchers(): RegExp[] {
+  const entries = appConfig.testOtpEmails.length > 0 ? [...appConfig.testOtpEmails, ...DEFAULT_TEST_OTP_PATTERNS] : [];
+  const key = entries.join(",");
+  if (matcherCache?.key !== key) {
+    matcherCache = { key, matchers: entries.map(compileTestOtpEntry).filter((r): r is RegExp => r !== null) };
+  }
+  return matcherCache.matchers;
+}
+
+/**
+ * The fixed code applies only when ALL hold:
+ *  1. test OTP is enabled: TEST_OTP_EMAILS is non-empty (unset/empty disables it entirely);
+ *  2. the address is a well-formed @janus.test address (hard guard - real domains never match);
+ *  3. it matches an exact entry or glob in TEST_OTP_EMAILS, or a built-in DEFAULT_TEST_OTP_PATTERNS.
+ * Request-first and the attempt lockout are enforced by the verify endpoint, not here.
  */
 export function isTestOtpAccount(email: string): boolean {
   const normalized = email.trim().toLowerCase();
-  if (!normalized.endsWith("@janus.test")) return false;
-  return appConfig.testOtpEmails.includes(normalized);
+  if (!normalized.endsWith(TEST_OTP_DOMAIN)) return false;
+  const parts = normalized.split("@");
+  const [local, domain] = parts;
+  if (parts.length !== 2 || local === undefined || domain === undefined || !LOCAL_PART.test(local)) return false;
+  return testOtpMatchers().some((re) => re.test(normalized));
 }
 
+/** Effective (domain-valid) entries, for the boot log. */
 export function effectiveTestOtpEmails(): string[] {
-  return appConfig.testOtpEmails.filter((e) => e.endsWith("@janus.test"));
+  if (appConfig.testOtpEmails.length === 0) return [];
+  return [...appConfig.testOtpEmails, ...DEFAULT_TEST_OTP_PATTERNS].filter((e) => compileTestOtpEntry(e) !== null);
 }
