@@ -21,15 +21,13 @@ export function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) 
   const strokesRef = useRef<Stroke[]>([]);
   useEffect(() => { strokesRef.current = strokes; }, [strokes]);
 
-  function redraw(all: Stroke[]) {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+  function paint(canvas: HTMLCanvasElement, all: Stroke[], scale: number, cssW: number, cssH: number) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = scale;
     ctx.save();
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+    ctx.clearRect(0, 0, cssW, cssH);
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.strokeStyle = "#e8f6ff";
@@ -51,6 +49,26 @@ export function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) 
       ctx.stroke();
     }
     ctx.restore();
+  }
+
+  function redraw(all: Stroke[]) {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    paint(canvas, all, window.devicePixelRatio || 1, canvas.clientWidth, canvas.clientHeight);
+  }
+
+  /** Export at full device-pixel-ratio resolution, never below 2x, so the PDF stays crisp. */
+  function exportPng(all: Stroke[]): string | null {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    const scale = Math.max(window.devicePixelRatio || 1, 2);
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    const off = document.createElement("canvas");
+    off.width = Math.round(w * scale);
+    off.height = Math.round(h * scale);
+    paint(off, all, scale, w, h);
+    return off.toDataURL("image/png");
   }
 
   useEffect(() => {
@@ -75,8 +93,7 @@ export function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) 
     const ink = next.some((s) => s.length > 1);
     setHasInk(ink);
     if (!ink) return onChange(null);
-    const canvas = canvasRef.current;
-    if (canvas) onChange(canvas.toDataURL("image/png"));
+    onChange(exportPng(next));
   }
 
   function point(e: React.PointerEvent): Point {
