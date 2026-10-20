@@ -10,3 +10,15 @@
 - 08:5x  Settings/language (EN->HI->EN), student sign-out, recruiter OTP login, discover, profile+follow, NDA request, recruiter notifications: PASS.
 - 09:05  Mobile commits: 0ec0adc (prod config/OTP), f221bb9 (signature pad), 60d9b9d (fixes).
 - APK: EAS not logged in; no Android SDK / JDK 17; ~270 MB free disk. Blocked (see report).
+- 09:02 IST  Run interrupted, resumed. State check: mobile edits uncommitted on prod-otp-config -> committed (above). No APK/android outputs exist.
+- 09:04  Student OTP login, inbox Grant Access on recruiter request: PASS (screens 29, 30).
+- 09:08  Bug: mobile signature pad WebView rendered white, so the light ink was invisible. Fixed (dark pad), commit 3a0ed43 (mobile).
+- 09:10  Recruiter drew signature + legal name "QA Recruiter Test", signed: "Agreement Signed, 7 days" (34-36). Vault lists both files (36).
+- 09:14  Bug: protected viewer showed a Cloudinary 404. Raw vault URL doubled the extension (.pdf.pdf). Fixed in API storage.service (098ad88), pushed with f0ec5cf, Render auto-deploy.
+- 09:2x  Admin OTP login: PASS (38).
+- 09:3x  API tests 41/41 PASS locally (Postgres 5432 + Redis 6379 up). Render did NOT auto-deploy; triggered dep-dbbehvvf3r2c738k0k00 (commit f0ec5cf), status live 09:40 IST. /ready ok.
+- 09:42  Re-test of the protected viewer after the deploy: screenshot caught "Preparing protected viewer..." then the Mac rebooted (memory pressure). Viewer fix NOT yet visually confirmed.
+- 09:50  After reboot: disk 13 GB free. Simulator re-booted, Metro restarted. Recruiter session expected in SecureStore.
+- 09:52  Interrupted again. State: main pushed to f0ec5cf; mobile prod-otp-config at 3a0ed43 (clean); uncommitted in main: this log, screenshots 36/37-fixed/38.
+- NEXT: confirm viewer, commit screenshots+log, APK (EAS not logged in; no SDK/JDK17), final report.
+- 09:55  Found root node_modules deleted after reboot (not by this agent; 13 GB freed). Running pnpm install --frozen-lockfile.
