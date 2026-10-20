@@ -46,3 +46,6 @@ infra/cdk/cdk.out
 .make/
 deploy-secrets.local.txt
 .vercel
+
+# local build artifacts
+qa-builds/

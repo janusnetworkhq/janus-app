@@ -27,3 +27,10 @@
 - 10:01  Render live on 4ce9c60 (dep-dbberp7f3r2c738l2ld0, manual trigger; auto-deploy does not fire). Protected viewer PASS: PDF renders inline with watermark (37c-asset-viewer-PASS). The second file showed the old URL until the 10-min Redis playback cache expired (37a).
 - 10:21  /ready 200 {redis, postgres ok}.
 - 10:23  Pushed 8d78523. npx eas-cli whoami: Not logged in, so the APK is blocked (no local SDK install, per instruction). Sim + Metro closed.
+- 10:25  EAS whoami: gokula. Linking the project (eas init).
+- 10:30  Mobile depends on workspace:^ packages, so the build uploads the monorepo root with a strict root .easignore (no .env/secrets/backups/node_modules).
+- 10:33  Build attempt 1 stopped before upload: 'Generating a new Keystore is not supported in --non-interactive mode'. Attempt 2: interactive run via expect, answering Y to the EAS-generated keystore prompt only.
+- 10:35  Attempt 2 stopped at the 'install expo-updates?' prompt (preview had channel). Removed the channel (commit in mobile repo). Retrying.
+- 10:40  Build attempt 3 submitted: d9eeb888-d87c-4420-8534-ae7f17776544 (keystore generated and stored by EAS, upload 1.7 MB). https://expo.dev/accounts/gokula/projects/janus/builds/d9eeb888-d87c-4420-8534-ae7f17776544
+- 10:5x  Build d9eeb888 still IN_PROGRESS (~15 min).
+- 11:0x  Build d9eeb888 FINISHED. APK: https://expo.dev/artifacts/eas/UHsXjoLe7c20CQYaXQk51QvNCtFwy3Nt10Pq69Dy-wY.apk (v1.0.0, versionCode 1). Downloading to qa-builds/janus-preview.apk (gitignored).

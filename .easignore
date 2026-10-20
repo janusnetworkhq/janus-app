@@ -1,0 +1,58 @@
+# EAS uploads the monorepo root (EAS_NO_VCS=1, EAS_PROJECT_ROOT=..) so workspace:^ packages resolve.
+# This file replaces .gitignore for that upload: keep secrets and bulky local artifacts out.
+
+# secrets / env (never upload)
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+deploy-secrets.local.txt
+*.local.txt
+*.pem
+*.key
+*.p12
+*.jks
+*.keystore
+.vercel
+**/.vercel
+
+# vcs / tooling
+.git
+**/.git
+.github
+.claude
+**/.claude
+.make
+.DS_Store
+**/.DS_Store
+
+# dependencies / builds
+node_modules
+**/node_modules
+.pnpm-store
+dist
+**/dist
+build
+.turbo
+**/.turbo
+.next
+**/.next
+out
+*.tsbuildinfo
+coverage
+apps/mobile/.expo
+apps/mobile/ios
+apps/mobile/android
+
+# local QA artifacts / data
+qa-backup
+qa-logs
+qa-screenshots
+qa-builds
+dump.rdb
+logs
+*.log
+infra/cdk/cdk.out
+infra/local/.localstack
